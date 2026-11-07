@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:html/dom.dart';
+import 'package:html/dom.dart' as dom;
 import '../../core/plugin/tool_plugin.dart';
 import '../../core/utils/html_utils.dart';
 
@@ -37,7 +37,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
   final _selectorController = TextEditingController();
   late TabController _tabController;
 
-  Document? _doc;
+  dom.Document? _doc;
   String? _error;
   String _plainText = '';
   List<String> _links = [];
@@ -129,7 +129,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
     }
   }
 
-  String _buildTree(Document doc) {
+  String _buildTree(dom.Document doc) {
     final buf = StringBuffer();
     for (final node in doc.nodes) {
       _writeNode(buf, node, 0);
@@ -137,9 +137,9 @@ class _HtmlParserPageState extends State<HtmlParserPage>
     return buf.toString();
   }
 
-  void _writeNode(StringBuffer buf, Node node, int depth) {
+  void _writeNode(StringBuffer buf, dom.Node node, int depth) {
     final indent = '  ' * depth;
-    if (node is Element) {
+    if (node is dom.Element) {
       final id = node.id.isEmpty ? '' : '#${node.id}';
       final cls = node.className.trim().isEmpty
           ? ''
@@ -148,7 +148,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
       for (final child in node.nodes) {
         _writeNode(buf, child, depth + 1);
       }
-    } else if (node is Text) {
+    } else if (node is dom.Text) {
       final t = node.text.trim();
       if (t.isNotEmpty) {
         final truncated = t.length > 80 ? '${t.substring(0, 80)}…' : t;
