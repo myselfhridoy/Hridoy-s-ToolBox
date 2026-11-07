@@ -3,9 +3,12 @@ import 'package:go_router/go_router.dart';
 import 'core/plugin/plugin_registry.dart';
 import 'core/storage/usage_store.dart';
 import 'core/theme.dart';
+import 'screens/favorites_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/recent_screen.dart';
 import 'screens/search_screen.dart';
 import 'tools/example_tool/example_tool.dart';
+import 'widgets/app_shell.dart';
 import 'widgets/tool_host.dart';
 
 Future<void> main() async {
@@ -23,19 +26,33 @@ class HridoysToolboxApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final router = GoRouter(
+      initialLocation: '/home',
       routes: [
-        GoRoute(
-          path: '/',
-          builder: (context, state) => const HomeScreen(),
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, shell) => AppShell(shell: shell),
+          branches: [
+            StatefulShellBranch(routes: [
+              GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
+            ]),
+            StatefulShellBranch(routes: [
+              GoRoute(
+                path: '/favorites',
+                builder: (_, __) => const FavoritesScreen(),
+              ),
+            ]),
+            StatefulShellBranch(routes: [
+              GoRoute(
+                path: '/recent',
+                builder: (_, __) => const RecentScreen(),
+              ),
+            ]),
+          ],
         ),
-        GoRoute(
-          path: '/search',
-          builder: (context, state) => const SearchScreen(),
-        ),
+        GoRoute(path: '/search', builder: (_, __) => const SearchScreen()),
         ...PluginRegistry.instance.plugins.map(
           (tool) => GoRoute(
             path: '/tool/${tool.id}',
-            builder: (context, state) => ToolHost(tool: tool),
+            builder: (_, __) => ToolHost(tool: tool),
           ),
         ),
       ],
