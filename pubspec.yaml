@@ -11,7 +11,8 @@ dependencies:
     sdk: flutter
   flare_glass: ^1.0.0
   go_router: ^14.0.0
-  shared_preferences: ^2.3.2      # ← নতুন লাইন
+  shared_preferences: ^2.3.2
+  html: ^0.15.6
 
 dev_dependencies:
   flutter_test:
