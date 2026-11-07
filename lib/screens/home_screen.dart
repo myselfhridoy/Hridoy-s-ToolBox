@@ -15,71 +15,47 @@ class HomeScreen extends StatelessWidget {
         child: ListenableBuilder(
           listenable: UsageStore.instance,
           builder: (context, _) {
-            final allTools = PluginRegistry.instance.plugins;
-            final byId = {for (final t in allTools) t.id: t};
-            final favorites = UsageStore.instance.favorites
-                .map((id) => byId[id])
-                .whereType<ToolPlugin>()
-                .toList();
-            final recents = UsageStore.instance.recents
-                .map((id) => byId[id])
-                .whereType<ToolPlugin>()
-                .toList();
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Hridoy's ToolBox",
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${allTools.length} tools ready',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _SearchBar(onTap: () => context.push('/search')),
-
-                  if (favorites.isNotEmpty) ...[
-                    const SizedBox(height: 20),
-                    const _SectionHeader(title: 'Favorites'),
-                    const SizedBox(height: 10),
-                    _HorizontalTools(tools: favorites),
-                  ],
-
-                  if (recents.isNotEmpty) ...[
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            final tools = PluginRegistry.instance.plugins;
+            return CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const _SectionHeader(title: 'Recent'),
-                        TextButton(
-                          onPressed: () =>
-                              UsageStore.instance.clearRecents(),
-                          child: Text(
-                            'Clear',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.6),
-                            ),
+                        const Text(
+                          "Hridoy's ToolBox",
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${tools.length} tools ready',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _SearchBar(onTap: () => context.push('/search')),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'All Tools',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    _HorizontalTools(tools: recents),
-                  ],
-
-                  const SizedBox(height: 24),
-                  const _SectionHeader(title: 'All Tools'),
-                  const SizedBox(height: 10),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                  sliver: SliverGrid(
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
@@ -87,29 +63,17 @@ class HomeScreen extends StatelessWidget {
                       mainAxisSpacing: 14,
                       childAspectRatio: 1.2,
                     ),
-                    itemCount: allTools.length,
-                    itemBuilder: (context, index) =>
-                        _ToolCard(tool: allTools[index]),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) => ToolCard(tool: tools[i]),
+                      childCount: tools.length,
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             );
           },
         ),
       ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
     );
   }
 }
@@ -153,30 +117,9 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-class _HorizontalTools extends StatelessWidget {
-  final List<ToolPlugin> tools;
-  const _HorizontalTools({required this.tools});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 120,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: tools.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, i) => SizedBox(
-          width: 110,
-          child: _ToolCard(tool: tools[i]),
-        ),
-      ),
-    );
-  }
-}
-
-class _ToolCard extends StatelessWidget {
+class ToolCard extends StatelessWidget {
   final ToolPlugin tool;
-  const _ToolCard({required this.tool});
+  const ToolCard({super.key, required this.tool});
 
   @override
   Widget build(BuildContext context) {
@@ -225,8 +168,7 @@ class _ToolCard extends StatelessWidget {
                       ? Colors.amberAccent
                       : Colors.white.withValues(alpha: 0.5),
                 ),
-                onPressed: () =>
-                    UsageStore.instance.toggleFavorite(tool.id),
+                onPressed: () => UsageStore.instance.toggleFavorite(tool.id),
               ),
             ),
           ],
