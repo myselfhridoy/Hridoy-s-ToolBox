@@ -5,9 +5,11 @@ import 'core/storage/usage_store.dart';
 import 'core/theme.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/library_screen.dart';
 import 'screens/recent_screen.dart';
 import 'screens/search_screen.dart';
 import 'tools/example_tool/example_tool.dart';
+import 'tools/html_parser/html_parser_tool.dart';
 import 'widgets/app_shell.dart';
 import 'widgets/tool_host.dart';
 
@@ -16,6 +18,7 @@ Future<void> main() async {
   await UsageStore.instance.init();
   PluginRegistry.instance.registerAll([
     ExampleTool(),
+    HtmlParserTool(),
   ]);
   runApp(const HridoysToolboxApp());
 }
@@ -32,7 +35,16 @@ class HridoysToolboxApp extends StatelessWidget {
           builder: (context, state, shell) => AppShell(shell: shell),
           branches: [
             StatefulShellBranch(routes: [
-              GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
+              GoRoute(
+                path: '/home',
+                builder: (_, __) => const HomeScreen(),
+              ),
+            ]),
+            StatefulShellBranch(routes: [
+              GoRoute(
+                path: '/library',
+                builder: (_, __) => const LibraryScreen(),
+              ),
             ]),
             StatefulShellBranch(routes: [
               GoRoute(
