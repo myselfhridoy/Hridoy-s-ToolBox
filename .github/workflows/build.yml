@@ -25,7 +25,7 @@ jobs:
             sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' "$FILE"
           fi
 
-      # ✅ Gradle ডিস্ট্রিবিউশন মিরর (Tencent) — আগের মতোই
+      # ✅ Gradle distribution mirror
       - name: Set Gradle distribution mirror
         run: |
           WRAPPER=android/gradle/wrapper/gradle-wrapper.properties
@@ -40,36 +40,38 @@ jobs:
           validateDistributionUrl=true
           EOF
 
-      # ✅ নতুন: Gradle init script দিয়ে সব রিপোজিটরি Aliyun মিররে বাধ্য করা
-      - name: Create Gradle init script with Aliyun mirrors
+      # ✅ Inject Aliyun mirrors directly into settings.gradle.kts
+      - name: Inject Maven mirrors into settings.gradle.kts
         run: |
-          mkdir -p ~/.gradle/init.d
-          cat > ~/.gradle/init.d/mirrors.gradle <<'EOF'
-          settingsEvaluated { settings ->
-              settings.pluginManagement {
-                  repositories {
-                      maven { url 'https://maven.aliyun.com/repository/public' }
-                      maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
-                      gradlePluginPortal()
-                  }
+          SETTINGS=android/settings.gradle.kts
+          cat > "$SETTINGS" <<'EOF'
+          pluginManagement {
+              repositories {
+                  maven { url = uri("https://maven.aliyun.com/repository/public") }
+                  maven { url = uri("https://maven.aliyun.com/repository/google") }
+                  maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
+                  maven { url = uri("https://maven.aliyun.com/repository/central") }
+                  maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
               }
           }
 
-          allprojects {
-              buildscript {
-                  repositories {
-                      maven { url 'https://maven.aliyun.com/repository/public' }
-                      maven { url 'https://maven.aliyun.com/repository/central' }
-                  }
-              }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
               repositories {
-                  maven { url 'https://maven.aliyun.com/repository/public' }
-                  maven { url 'https://maven.aliyun.com/repository/central' }
+                  maven { url = uri("https://maven.aliyun.com/repository/public") }
+                  maven { url = uri("https://maven.aliyun.com/repository/google") }
+                  maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
+                  maven { url = uri("https://maven.aliyun.com/repository/central") }
+                  maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
+                  google()
+                  mavenCentral()
               }
           }
           EOF
-          echo "----- Init script created -----"
-          cat ~/.gradle/init.d/mirrors.gradle
+          echo "----- settings.gradle.kts updated -----"
 
       - name: Install dependencies
         run: flutter pub get
