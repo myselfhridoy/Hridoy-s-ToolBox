@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/plugin/tool_plugin.dart';
 import '../../core/storage/github_token_store.dart';
+import '../../core/tokens.dart';
 
 class GittomdTool implements ToolPlugin {
   @override
@@ -750,21 +751,24 @@ class _GittomdPageState extends State<GittomdPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'প্রাইভেট রিপো পড়তে PAT লাগবে।\n'
                 'Fine-grained: Contents → Read-only\n'
                 'Classic: repo স্কোপ',
-                style: TextStyle(fontSize: 12),
+                style: Theme.of(ctx)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: AppColors.textSecondary),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: controller,
                 obscureText: obscure,
                 maxLines: 1,
                 decoration: InputDecoration(
                   hintText: 'github_pat_… or ghp_…',
-                  border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
+                    tooltip: obscure ? 'Show token' : 'Hide token',
                     icon: Icon(
                       obscure ? Icons.visibility : Icons.visibility_off,
                     ),
@@ -807,6 +811,7 @@ class _GittomdPageState extends State<GittomdPage> {
   @override
   Widget build(BuildContext context) {
     final hasToken = GitHubTokenStore.instance.hasToken;
+    final t = Theme.of(context).textTheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -821,7 +826,7 @@ class _GittomdPageState extends State<GittomdPage> {
           IconButton(
             icon: Icon(
               hasToken ? Icons.lock : Icons.lock_open,
-              color: hasToken ? Colors.greenAccent : null,
+              color: hasToken ? AppColors.success : null,
             ),
             tooltip: hasToken ? 'Token সেট আছে' : 'Token সেট করুন',
             onPressed: _openTokenDialog,
@@ -838,7 +843,12 @@ class _GittomdPageState extends State<GittomdPage> {
         children: [
           // ── URL input with embedded fetch icon ──
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.lg,
+              AppSpacing.sm,
+            ),
             child: TextField(
               controller: _urlController,
               keyboardType: TextInputType.url,
@@ -846,11 +856,8 @@ class _GittomdPageState extends State<GittomdPage> {
               decoration: InputDecoration(
                 hintText: 'https://github.com/owner/repo',
                 prefixIcon: const Icon(Icons.link),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
                 filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.05),
+                fillColor: AppColors.fieldFill,
                 suffixIcon: Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: _loading
@@ -866,7 +873,7 @@ class _GittomdPageState extends State<GittomdPage> {
                           tooltip: 'Fetch',
                           onPressed: _fetch,
                           icon: const Icon(Icons.arrow_circle_right),
-                          iconSize: 26,
+                          iconSize: 28,
                         ),
                 ),
               ),
@@ -876,9 +883,9 @@ class _GittomdPageState extends State<GittomdPage> {
             ),
           ),
 
-          // ── Mode selector (full width now) ──
+          // ── Mode selector ──
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: SizedBox(
               width: double.infinity,
               child: SegmentedButton<_Mode>(
@@ -886,46 +893,47 @@ class _GittomdPageState extends State<GittomdPage> {
                   ButtonSegment(
                     value: _Mode.readme,
                     label: Text('README'),
-                    icon: Icon(Icons.article_outlined, size: 14),
+                    icon: Icon(Icons.article_outlined, size: 18),
                   ),
                   ButtonSegment(
                     value: _Mode.fullRepo,
                     label: Text('Full'),
-                    icon: Icon(Icons.folder_zip_outlined, size: 14),
+                    icon: Icon(Icons.folder_zip_outlined, size: 18),
                   ),
                   ButtonSegment(
                     value: _Mode.pick,
                     label: Text('Pick'),
-                    icon: Icon(Icons.checklist, size: 14),
+                    icon: Icon(Icons.checklist, size: 18),
                   ),
                 ],
                 selected: {_mode},
                 onSelectionChanged: _onModeChanged,
                 showSelectedIcon: false,
-                style: const ButtonStyle(
-                  visualDensity: VisualDensity.compact,
-                ),
               ),
             ),
           ),
 
           if (!hasToken)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                0,
+              ),
               child: Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.info_outline,
-                    size: 14,
-                    color: Colors.white.withValues(alpha: 0.5),
+                    size: 16,
+                    color: AppColors.textMuted,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       'টোকেন ছাড়া শুধু পাবলিক রিপো (৬০ req/hr)',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.white.withValues(alpha: 0.5),
+                      style: t.labelSmall?.copyWith(
+                        color: AppColors.textMuted,
                       ),
                     ),
                   ),
@@ -934,38 +942,40 @@ class _GittomdPageState extends State<GittomdPage> {
             ),
           if (_error != null)
             Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                _error!,
-                style: const TextStyle(color: Colors.redAccent),
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Semantics(
+                liveRegion: true,
+                child: Text(
+                  _error!,
+                  style: t.bodyMedium?.copyWith(color: AppColors.error),
+                ),
               ),
             ),
           if (_resolvedRepo != null &&
               _markdown.isNotEmpty &&
               !_showPicker)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: Row(
                 children: [
                   const Icon(
                     Icons.check_circle,
                     size: 16,
-                    color: Colors.greenAccent,
+                    color: AppColors.success,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       '$_resolvedRepo · ${_markdown.length} chars',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.6),
+                      style: t.labelSmall?.copyWith(
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           const Divider(height: 1),
           Expanded(child: _buildBody()),
         ],
@@ -978,18 +988,20 @@ class _GittomdPageState extends State<GittomdPage> {
       if (_genTotal > 0) {
         return Center(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppSpacing.xxl),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 LinearProgressIndicator(
                   value: _genTotal == 0 ? null : _genProgress / _genTotal,
                   minHeight: 6,
+                  semanticsLabel: 'Fetching files',
+                  semanticsValue: '$_genProgress of $_genTotal',
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 Text(
                   'Fetching $_genProgress / $_genTotal',
-                  style: const TextStyle(fontSize: 13),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
             ),
@@ -1006,7 +1018,7 @@ class _GittomdPageState extends State<GittomdPage> {
     if (_markdown.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppSpacing.xxl),
           child: Text(
             _mode == _Mode.readme
                 ? 'Repo URL দিয়ে README আনুন'
@@ -1014,7 +1026,7 @@ class _GittomdPageState extends State<GittomdPage> {
                     ? 'Repo URL দিয়ে পুরো রিপো Markdown-এ প্যাক করুন'
                     : 'Repo URL দিয়ে ফাইল ট্রি আনুন, তারপর নির্দিষ্ট ফাইল/ফোল্ডার বেছে নিন',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+            style: const TextStyle(color: AppColors.textMuted),
           ),
         ),
       );
@@ -1022,11 +1034,11 @@ class _GittomdPageState extends State<GittomdPage> {
 
     return Markdown(
       data: _markdown,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
         codeblockDecoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
         ),
         code: const TextStyle(fontFamily: 'monospace', fontSize: 12),
       ),
@@ -1035,18 +1047,19 @@ class _GittomdPageState extends State<GittomdPage> {
 
   Widget _buildPickerView() {
     if (_treeRoots.isEmpty) {
-      return Center(
+      return const Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(AppSpacing.xxl),
           child: Text(
             'কোনো ফাইল পাওয়া যায়নি—Fetch চাপুন',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+            style: TextStyle(color: AppColors.textMuted),
           ),
         ),
       );
     }
 
+    final t = Theme.of(context).textTheme;
     final visible = _flattenVisible();
     final selectedCount = _selectedPaths.length;
     final selectedSize = _selectedSize;
@@ -1054,7 +1067,12 @@ class _GittomdPageState extends State<GittomdPage> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.sm,
+          ),
           child: Column(
             children: [
               Row(
@@ -1062,8 +1080,7 @@ class _GittomdPageState extends State<GittomdPage> {
                   Expanded(
                     child: Text(
                       '$selectedCount files · ${_formatSize(selectedSize)}',
-                      style: const TextStyle(
-                        fontSize: 13,
+                      style: t.bodySmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1085,7 +1102,7 @@ class _GittomdPageState extends State<GittomdPage> {
                   onPressed: selectedCount == 0 || _loading
                       ? null
                       : _generateFromSelection,
-                  icon: const Icon(Icons.download, size: 18),
+                  icon: const Icon(Icons.download, size: 20),
                   label: Text(
                     selectedCount == 0
                         ? 'Generate Markdown'
@@ -1097,20 +1114,20 @@ class _GittomdPageState extends State<GittomdPage> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           child: TextField(
             controller: _pickerSearchController,
-            style: const TextStyle(fontSize: 13),
+            style: t.bodyMedium,
             decoration: InputDecoration(
               hintText: 'Filter by path…',
-              prefixIcon: const Icon(Icons.search, size: 18),
-              isDense: true,
+              prefixIcon: const Icon(Icons.search, size: 20),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               suffixIcon: _pickerQuery.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear, size: 16),
+                      tooltip: 'Clear filter',
+                      icon: const Icon(Icons.clear, size: 20),
                       onPressed: () {
                         _pickerSearchController.clear();
                         setState(() => _pickerQuery = '');
@@ -1121,16 +1138,14 @@ class _GittomdPageState extends State<GittomdPage> {
             onChanged: (v) => setState(() => _pickerQuery = v),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         const Divider(height: 1),
         Expanded(
           child: visible.isEmpty
-              ? Center(
+              ? const Center(
                   child: Text(
                     'No matches',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                    ),
+                    style: TextStyle(color: AppColors.textMuted),
                   ),
                 )
               : ListView.builder(
@@ -1146,6 +1161,7 @@ class _GittomdPageState extends State<GittomdPage> {
   }
 
   Widget _buildTreeRow(_TreeNode node, int depth) {
+    final t = Theme.of(context).textTheme;
     final files = node.allFiles.toList();
     final selectedInNode =
         files.where((f) => _selectedPaths.contains(f.path)).length;
@@ -1164,67 +1180,71 @@ class _GittomdPageState extends State<GittomdPage> {
     final showChildren =
         node.isFolder && (_pickerQuery.isEmpty ? isExpanded : true);
 
+    // ফোল্ডারে ট্যাপ = expand/collapse, ফাইলে ট্যাপ = select/deselect
+    final VoidCallback? onRowTap = node.isFolder
+        ? () {
+            setState(() {
+              if (_expandedFolders.contains(node.path)) {
+                _expandedFolders.remove(node.path);
+              } else {
+                _expandedFolders.add(node.path);
+              }
+            });
+            _savePickerState();
+          }
+        : (files.isEmpty ? null : () => _toggleSelection(node));
+
     return InkWell(
-      onTap: node.isFolder
-          ? () {
-              setState(() {
-                if (_expandedFolders.contains(node.path)) {
-                  _expandedFolders.remove(node.path);
-                } else {
-                  _expandedFolders.add(node.path);
-                }
-              });
-              _savePickerState();
-            }
-          : null,
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: 8 + depth * 16.0,
-          right: 12,
-          top: 2,
-          bottom: 2,
-        ),
-        child: Row(
-          children: [
-            if (node.isFolder)
+      onTap: onRowTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppSizes.minTouch),
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: AppSpacing.sm + depth * 16.0,
+            right: AppSpacing.md,
+          ),
+          child: Row(
+            children: [
+              if (node.isFolder)
+                Icon(
+                  showChildren ? Icons.expand_more : Icons.chevron_right,
+                  size: 20,
+                )
+              else
+                const SizedBox(width: 20),
+              Semantics(
+                label: 'Select ${node.name}',
+                child: Checkbox(
+                  value: checkboxValue,
+                  tristate: node.isFolder,
+                  onChanged:
+                      files.isEmpty ? null : (_) => _toggleSelection(node),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
               Icon(
-                showChildren ? Icons.expand_more : Icons.chevron_right,
-                size: 18,
-              )
-            else
-              const SizedBox(width: 18),
-            Checkbox(
-              value: checkboxValue,
-              tristate: node.isFolder,
-              onChanged: files.isEmpty ? null : (_) => _toggleSelection(node),
-              visualDensity: VisualDensity.compact,
-            ),
-            Icon(
-              node.isFolder ? Icons.folder : Icons.description,
-              size: 16,
-              color: Colors.white.withValues(alpha: 0.7),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                node.name,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight:
-                      node.isFolder ? FontWeight.w600 : FontWeight.normal,
+                node.isFolder ? Icons.folder : Icons.description,
+                size: 20,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  node.name,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodyMedium?.copyWith(
+                    fontWeight:
+                        node.isFolder ? FontWeight.w600 : FontWeight.normal,
+                  ),
                 ),
               ),
-            ),
-            if (!node.isFolder)
-              Text(
-                _formatSize(node.size),
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.white.withValues(alpha: 0.4),
+              if (!node.isFolder)
+                Text(
+                  _formatSize(node.size),
+                  style: t.labelSmall?.copyWith(color: AppColors.textMuted),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
