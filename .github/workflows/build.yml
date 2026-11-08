@@ -36,8 +36,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # ✅ flutter create-এর পরে wrapper ফাইলটি সরাসরি downloads.gradle.org ব্যবহার করতে বাধ্য করা
-      - name: Force direct Gradle distribution URL (no GitHub redirect)
+      # ✅ flutter create-এর পরে wrapper ফাইলটি Tencent মিরর ব্যবহার করতে বাধ্য করা
+      - name: Force Gradle mirror URL
         run: |
           WRAPPER=android/gradle/wrapper/gradle-wrapper.properties
           mkdir -p $(dirname "$WRAPPER")
@@ -46,7 +46,7 @@ jobs:
           distributionPath=wrapper/dists
           zipStoreBase=GRADLE_USER_HOME
           zipStorePath=wrapper/dists
-          distributionUrl=https\://downloads.gradle.org/distributions/gradle-9.3.1-all.zip
+          distributionUrl=https\://mirrors.cloud.tencent.com/gradle/gradle-9.3.1-bin.zip
           networkTimeout=10000
           validateDistributionUrl=true
           EOF
