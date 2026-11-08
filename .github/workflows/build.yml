@@ -25,7 +25,7 @@ jobs:
             sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' "$FILE"
           fi
 
-      # ✅ ধাপ ১: Gradle wrapper মিরর (Tencent)
+      # ✅ Gradle ডিস্ট্রিবিউশন মিরর (Tencent) — আগের মতোই
       - name: Set Gradle distribution mirror
         run: |
           WRAPPER=android/gradle/wrapper/gradle-wrapper.properties
@@ -40,57 +40,36 @@ jobs:
           validateDistributionUrl=true
           EOF
 
-      # ✅ ধাপ ২: Maven মিরর (Aliyun) — build.gradle.kts-এ ইনজেক্ট
-      - name: Inject Aliyun Maven mirrors
+      # ✅ নতুন: Gradle init script দিয়ে সব রিপোজিটরি Aliyun মিররে বাধ্য করা
+      - name: Create Gradle init script with Aliyun mirrors
         run: |
-          ROOT_GRADLE=android/build.gradle.kts
-          APP_GRADLE=android/app/build.gradle.kts
-
-          # রুট build.gradle.kts-এ allprojects repositories যোগ
-          if ! grep -q 'maven.aliyun.com' "$ROOT_GRADLE"; then
-            python3 -c "
-          import re
-          p = '$ROOT_GRADLE'
-          s = open(p).read()
-          inject = '''allprojects {
-              repositories {
-                  maven { url = uri(\"https://maven.aliyun.com/repository/public\") }
-                  maven { url = uri(\"https://maven.aliyun.com/repository/google\") }
-                  maven { url = uri(\"https://maven.aliyun.com/repository/gradle-plugin\") }
-                  maven { url = uri(\"https://maven.aliyun.com/repository/central\") }
-                  google()
-                  mavenCentral()
+          mkdir -p ~/.gradle/init.d
+          cat > ~/.gradle/init.d/mirrors.gradle <<'EOF'
+          settingsEvaluated { settings ->
+              settings.pluginManagement {
+                  repositories {
+                      maven { url 'https://maven.aliyun.com/repository/public' }
+                      maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+                      gradlePluginPortal()
+                  }
               }
           }
-          '''
-          s = inject + s
-          open(p, 'w').write(s)
-          "
-          fi
 
-          # অ্যাপ build.gradle.kts-এ ও একইভাবে
-          if ! grep -q 'maven.aliyun.com' "$APP_GRADLE"; then
-            python3 -c "
-          p = '$APP_GRADLE'
-          s = open(p).read()
-          inject = '''allprojects {
+          allprojects {
+              buildscript {
+                  repositories {
+                      maven { url 'https://maven.aliyun.com/repository/public' }
+                      maven { url 'https://maven.aliyun.com/repository/central' }
+                  }
+              }
               repositories {
-                  maven { url = uri(\"https://maven.aliyun.com/repository/public\") }
-                  maven { url = uri(\"https://maven.aliyun.com/repository/google\") }
-                  maven { url = uri(\"https://maven.aliyun.com/repository/gradle-plugin\") }
-                  maven { url = uri(\"https://maven.aliyun.com/repository/central\") }
-                  google()
-                  mavenCentral()
+                  maven { url 'https://maven.aliyun.com/repository/public' }
+                  maven { url 'https://maven.aliyun.com/repository/central' }
               }
           }
-          '''
-          s = inject + s
-          open(p, 'w').write(s)
-          "
-          fi
-
-          echo '----- android/build.gradle.kts (head) -----'
-          head -20 "$ROOT_GRADLE"
+          EOF
+          echo "----- Init script created -----"
+          cat ~/.gradle/init.d/mirrors.gradle
 
       - name: Install dependencies
         run: flutter pub get
