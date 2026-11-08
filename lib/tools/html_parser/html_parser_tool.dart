@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:http/http.dart' as http;
 import '../../core/plugin/tool_plugin.dart';
+import '../../core/tokens.dart';
 import '../../core/utils/html_utils.dart';
 
 class HtmlParserTool implements ToolPlugin {
@@ -723,7 +724,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
             child: TextField(
               controller: _htmlC,
               maxLines: 3,
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
               decoration: InputDecoration(
                 hintText: '…অথবা HTML এখানে পেস্ট করুন',
                 isDense: true,
@@ -731,7 +732,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
                   borderRadius: BorderRadius.circular(12),
                 ),
                 filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.05),
+                fillColor: AppColors.fieldFill,
               ),
             ),
           ),
@@ -751,7 +752,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
               padding: const EdgeInsets.all(10),
               child: Text(
                 _error!,
-                style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                style: const TextStyle(color: AppColors.error, fontSize: 12),
               ),
             ),
           TabBar(
@@ -786,7 +787,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
   Widget _empty(String m) => Center(
         child: Text(
           m,
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+          style: TextStyle(color: AppColors.textMuted),
         ),
       );
 
@@ -861,7 +862,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
           '${_matches.isNotEmpty ? ' · selected elements included' : ''}',
           style: TextStyle(
             fontSize: 12,
-            color: Colors.white.withValues(alpha: 0.6),
+            color: AppColors.textMuted,
           ),
         ),
         const SizedBox(height: 8),
@@ -875,13 +876,13 @@ class _HtmlParserPageState extends State<HtmlParserPage>
           'Preview',
           style: TextStyle(
             fontSize: 12,
-            color: Colors.white.withValues(alpha: 0.5),
+            color: AppColors.textMuted,
           ),
         ),
         const SizedBox(height: 6),
         SelectableText(
           preview,
-          style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+          style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
         ),
       ],
     );
@@ -905,12 +906,13 @@ class _HtmlParserPageState extends State<HtmlParserPage>
                   '(≈ ${(_clean.length / 4).round()} tokens)',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: AppColors.textMuted,
                   ),
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.copy, size: 18),
+                tooltip: 'Copy clean HTML',
+                icon: const Icon(Icons.copy, size: 20),
                 onPressed: () => _copy(_clean, 'Clean HTML কপি হয়েছে'),
               ),
             ],
@@ -921,7 +923,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
             padding: const EdgeInsets.all(16),
             child: SelectableText(
               shown,
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
             ),
           ),
         ),
@@ -958,7 +960,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
           ),
         ),
         SizedBox(
-          height: 38,
+          height: 48,
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -985,7 +987,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
                     '${_matchTotal > _matches.length ? ' (প্রথম ${_matches.length} দেখানো)' : ''}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: AppColors.textMuted,
                     ),
                   ),
                 ),
@@ -1020,7 +1022,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
                                   m.path,
                                   style: TextStyle(
                                     fontFamily: 'monospace',
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     color: Theme.of(context).colorScheme.primary,
                                   ),
                                 ),
@@ -1038,7 +1040,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
                                     style: const TextStyle(
                                       fontFamily: 'monospace',
                                       fontSize: 12,
-                                      color: Colors.white70,
+                                      color: AppColors.textSecondary,
                                     ),
                                   ),
                                 if (m.text.isNotEmpty)
@@ -1053,7 +1055,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.copy, size: 18),
+                            icon: const Icon(Icons.copy, size: 20),
                             tooltip: 'Copy HTML',
                             onPressed: () => _copy(m.html, 'HTML কপি হয়েছে'),
                           ),
@@ -1077,8 +1079,8 @@ class _HtmlParserPageState extends State<HtmlParserPage>
           child: Text(
             'যেকোনো node-এ ট্যাপ করলে তার selector তৈরি হয়ে Select ট্যাবে চলে যাবে',
             style: TextStyle(
-              fontSize: 11,
-              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 12,
+              color: AppColors.textMuted,
             ),
           ),
         ),
@@ -1103,8 +1105,8 @@ class _HtmlParserPageState extends State<HtmlParserPage>
                   padding: EdgeInsets.only(
                     left: 12 + r.depth * 12.0,
                     right: 12,
-                    top: 5,
-                    bottom: 5,
+                    top: 16,
+                    bottom: 16,
                   ),
                   child: Text.rich(
                     TextSpan(
@@ -1120,8 +1122,8 @@ class _HtmlParserPageState extends State<HtmlParserPage>
                           TextSpan(
                             text: '  $own',
                             style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.white.withValues(alpha: 0.45),
+                              fontSize: 12,
+                              color: AppColors.textMuted,
                             ),
                           ),
                       ],
@@ -1159,7 +1161,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: SelectableText(
               _report,
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
             ),
           ),
         ),
