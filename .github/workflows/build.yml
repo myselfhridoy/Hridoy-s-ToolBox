@@ -25,7 +25,7 @@ jobs:
             sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' "$FILE"
           fi
 
-      # ✅ ধাপ ১: Gradle ডিস্ট্রিবিউশন ক্যাশ করা (৫০৪ এরর এড়াতে)
+      # ✅ Gradle ডিস্ট্রিবিউশন ক্যাশ করা (পুনরায় ডাউনলোড এড়াতে)
       - name: Cache Gradle distribution
         uses: actions/cache@v4
         with:
@@ -36,8 +36,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # ✅ ধাপ ২: flutter create-এর পরে wrapper ফাইলটি জোরপূর্বক আপডেট করা
-      - name: Force correct Gradle distribution URL
+      # ✅ flutter create-এর পরে wrapper ফাইলটি সরাসরি downloads.gradle.org ব্যবহার করতে বাধ্য করা
+      - name: Force direct Gradle distribution URL (no GitHub redirect)
         run: |
           WRAPPER=android/gradle/wrapper/gradle-wrapper.properties
           mkdir -p $(dirname "$WRAPPER")
@@ -46,7 +46,7 @@ jobs:
           distributionPath=wrapper/dists
           zipStoreBase=GRADLE_USER_HOME
           zipStorePath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-9.3.1-all.zip
+          distributionUrl=https\://downloads.gradle.org/distributions/gradle-9.3.1-all.zip
           networkTimeout=10000
           validateDistributionUrl=true
           EOF
@@ -56,20 +56,8 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # ✅ ধাপ ৩: Gradle ডাউনলোডে সমস্যা হলে পুনরায় চেষ্টা করার জন্য retry যোগ করা
-      - name: Build release APK (with retry)
-        run: |
-          for i in 1 2 3; do
-            echo "Attempt $i..."
-            if flutter build apk --release; then
-              echo "Build succeeded on attempt $i"
-              exit 0
-            fi
-            echo "Attempt $i failed. Retrying in 10 seconds..."
-            sleep 10
-          done
-          echo "All attempts failed."
-          exit 1
+      - name: Build release APK
+        run: flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
