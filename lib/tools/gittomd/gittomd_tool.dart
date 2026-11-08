@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/plugin/tool_plugin.dart';
 import '../../core/storage/github_token_store.dart';
 
@@ -36,6 +37,15 @@ class GittomdPage extends StatefulWidget {
 }
 
 class _GittomdPageState extends State<GittomdPage> {
+  // ── Session cache (survives navigation within a single app session) ──
+  static final Map<String, String> _mdMem = {};
+  static final Map<String, Map<String, dynamic>> _treeMem = {};
+  static SharedPreferences? _prefs;
+
+  static const _kLastUrl = 'gittomd_last_url';
+  static const _kLastMode = 'gittomd_last_mode';
+  static const _maxCacheBytes = 2 * 1024 * 1024; // 2 MB per entry
+
   final _urlController = TextEditingController();
   final _pickerSearchController = TextEditingController();
   _Mode _mode = _Mode.readme;
@@ -66,12 +76,124 @@ class _GittomdPageState extends State<GittomdPage> {
   };
 
   @override
+  void initState() {
+    super.initState();
+    _restoreFromCache();
+  }
+
+  @override
   void dispose() {
     _urlController.dispose();
     _pickerSearchController.dispose();
     super.dispose();
   }
 
+  // ── Cache helpers ──
+  static String _mdKey(String owner, String repo, String mode) =>
+      'gittomd_md_${owner}_${repo}_$mode';
+
+  static String _treeKey(String owner, String repo) =>
+      'gittomd_tree_${owner}_${repo}';
+
+  Future<String?> _loadMarkdown(String owner, String repo, String mode) async {
+    final k = _mdKey(owner, repo, mode);
+    if (_mdMem.containsKey(k)) return _mdMem[k];
+    final disk = _prefs?.getString(k);
+    if (disk != null) _mdMem[k] = disk;
+    return disk;
+  }
+
+  Future<void> _saveMarkdown(
+      String owner, String repo, String mode, String md) async {
+    if (md.length > _maxCacheBytes) return; // skip huge payloads
+    final k = _mdKey(owner, repo, mode);
+    _mdMem[k] = md;
+    await _prefs?.setString(k, md);
+  }
+
+  Future<void> _savePickerState() async {
+    if (_treeOwner.isEmpty || _treeRepo.isEmpty) return;
+    final k = _treeKey(_treeOwner, _treeRepo);
+    final data = <String, dynamic>{
+      'roots': _treeRoots.map((r) => r.toJson()).toList(),
+      'selected': _selectedPaths.toList(),
+      'expanded': _expandedFolders.toList(),
+      'branch': _treeBranch,
+    };
+    _treeMem[k] = data;
+    try {
+      await _prefs?.setString(k, jsonEncode(data));
+    } catch (_) {}
+  }
+
+  Future<Map<String, dynamic>?> _loadPickerState(
+      String owner, String repo) async {
+    final k = _treeKey(owner, repo);
+    if (_treeMem.containsKey(k)) return _treeMem[k];
+    final s = _prefs?.getString(k);
+    if (s == null) return null;
+    try {
+      final data = jsonDecode(s) as Map<String, dynamic>;
+      _treeMem[k] = data;
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _rememberLast(String url, _Mode mode) async {
+    await _prefs?.setString(_kLastUrl, url);
+    await _prefs?.setString(_kLastMode, mode.name);
+  }
+
+  Future<void> _restoreFromCache() async {
+    _prefs ??= await SharedPreferences.getInstance();
+
+    final lastUrl = _prefs!.getString(_kLastUrl) ?? '';
+    final lastMode = _prefs!.getString(_kLastMode) ?? 'readme';
+
+    if (lastUrl.isEmpty) return;
+
+    _urlController.text = lastUrl;
+    _mode = _Mode.values.firstWhere(
+      (m) => m.name == lastMode,
+      orElse: () => _Mode.readme,
+    );
+
+    final parsed = _parseRepoUrl(lastUrl);
+    if (parsed == null) return;
+
+    _resolvedRepo = '${parsed.owner}/${parsed.repo}';
+
+    // Restore markdown for this mode
+    final md = await _loadMarkdown(parsed.owner, parsed.repo, _mode.name);
+
+    // Restore picker tree if Pick mode
+    if (_mode == _Mode.pick) {
+      final treeData = await _loadPickerState(parsed.owner, parsed.repo);
+      if (treeData != null) {
+        try {
+          _treeRoots = (treeData['roots'] as List)
+              .map((j) => _TreeNode.fromJson(j as Map<String, dynamic>))
+              .toList();
+          _selectedPaths =
+              (treeData['selected'] as List).cast<String>().toSet();
+          _expandedFolders =
+              (treeData['expanded'] as List).cast<String>().toSet();
+          _treeOwner = parsed.owner;
+          _treeRepo = parsed.repo;
+          _treeBranch = treeData['branch'] as String? ?? 'main';
+          _showPicker = md == null || md.isEmpty;
+        } catch (_) {}
+      }
+    }
+
+    if (md != null && md.isNotEmpty) _markdown = md;
+
+    if (mounted) setState(() {});
+  }
+
+  // ─────────────────────────────────────────────────────────────
   Map<String, String> get _headers {
     final h = <String, String>{
       'User-Agent': 'Hridoys-ToolBox',
@@ -100,19 +222,62 @@ class _GittomdPageState extends State<GittomdPage> {
     return (owner: parts[0], repo: parts[1]);
   }
 
-  void _onModeChanged(Set<_Mode> s) {
+  void _onModeChanged(Set<_Mode> s) async {
+    final newMode = s.first;
+    final parsed = _parseRepoUrl(_urlController.text);
+
     setState(() {
-      _mode = s.first;
-      _showPicker = false;
-      _treeRoots = [];
-      _selectedPaths.clear();
-      _expandedFolders.clear();
-      _markdown = '';
+      _mode = newMode;
       _error = null;
       _pickerQuery = '';
       _pickerSearchController.clear();
       _genProgress = 0;
       _genTotal = 0;
+    });
+
+    if (parsed == null) {
+      setState(() {
+        _markdown = '';
+        _treeRoots = [];
+        _selectedPaths.clear();
+        _expandedFolders.clear();
+        _showPicker = false;
+      });
+      return;
+    }
+
+    // Restore markdown for the new mode
+    final md = await _loadMarkdown(parsed.owner, parsed.repo, newMode.name);
+
+    // Restore picker state if switching to Pick
+    Map<String, dynamic>? treeData;
+    if (newMode == _Mode.pick) {
+      treeData = await _loadPickerState(parsed.owner, parsed.repo);
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _resolvedRepo = '${parsed.owner}/${parsed.repo}';
+      _markdown = md ?? '';
+
+      if (newMode == _Mode.pick && treeData != null) {
+        _treeRoots = (treeData['roots'] as List)
+            .map((j) => _TreeNode.fromJson(j as Map<String, dynamic>))
+            .toList();
+        _selectedPaths =
+            (treeData['selected'] as List).cast<String>().toSet();
+        _expandedFolders =
+            (treeData['expanded'] as List).cast<String>().toSet();
+        _treeOwner = parsed.owner;
+        _treeRepo = parsed.repo;
+        _treeBranch = treeData['branch'] as String? ?? 'main';
+        _showPicker = (md == null || md.isEmpty);
+      } else {
+        _treeRoots = [];
+        _selectedPaths.clear();
+        _expandedFolders.clear();
+        _showPicker = false;
+      }
     });
   }
 
@@ -133,15 +298,19 @@ class _GittomdPageState extends State<GittomdPage> {
       _genTotal = 0;
     });
 
+    await _rememberLast(_urlController.text.trim(), _mode);
+
     try {
       if (_mode == _Mode.pick) {
         await _loadTree(parsed.owner, parsed.repo);
+        await _savePickerState();
         if (mounted) setState(() => _showPicker = true);
         return;
       }
       final md = _mode == _Mode.readme
           ? await _fetchReadme(parsed.owner, parsed.repo)
           : await _fetchFullRepo(parsed.owner, parsed.repo);
+      await _saveMarkdown(parsed.owner, parsed.repo, _mode.name, md);
       if (mounted) setState(() => _markdown = md);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
@@ -427,6 +596,7 @@ class _GittomdPageState extends State<GittomdPage> {
         }
       }
     });
+    _savePickerState();
   }
 
   void _selectAll() {
@@ -437,9 +607,13 @@ class _GittomdPageState extends State<GittomdPage> {
         }
       }
     });
+    _savePickerState();
   }
 
-  void _clearSelection() => setState(_selectedPaths.clear);
+  void _clearSelection() {
+    setState(_selectedPaths.clear);
+    _savePickerState();
+  }
 
   int get _selectedSize {
     var total = 0;
@@ -500,9 +674,13 @@ class _GittomdPageState extends State<GittomdPage> {
         if (mounted) setState(() => _genProgress = i + 1);
       }
 
+      final md = buf.toString();
+      await _saveMarkdown(_treeOwner, _treeRepo, _Mode.pick.name, md);
+      await _savePickerState();
+
       if (mounted) {
         setState(() {
-          _markdown = buf.toString();
+          _markdown = md;
           _showPicker = false;
           _loading = false;
           _genProgress = 0;
@@ -726,7 +904,7 @@ class _GittomdPageState extends State<GittomdPage> {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.download, size: 18),
+                      : const Icon(Icons.refresh, size: 18),
                   label: const Text('Fetch'),
                 ),
               ],
@@ -859,9 +1037,13 @@ class _GittomdPageState extends State<GittomdPage> {
   Widget _buildPickerView() {
     if (_treeRoots.isEmpty) {
       return Center(
-        child: Text(
-          'কোনো ফাইল পাওয়া যায়নি',
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'কোনো ফাইল পাওয়া যায়নি—Fetch চাপুন',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+          ),
         ),
       );
     }
@@ -985,13 +1167,16 @@ class _GittomdPageState extends State<GittomdPage> {
 
     return InkWell(
       onTap: node.isFolder
-          ? () => setState(() {
+          ? () {
+              setState(() {
                 if (_expandedFolders.contains(node.path)) {
                   _expandedFolders.remove(node.path);
                 } else {
                   _expandedFolders.add(node.path);
                 }
-              })
+              });
+              _savePickerState();
+            }
           : null,
       child: Padding(
         padding: EdgeInsets.only(
@@ -1070,5 +1255,26 @@ class _TreeNode {
         yield* c.allFiles;
       }
     }
+  }
+
+  Map<String, dynamic> toJson() => {
+        'n': name,
+        'p': path,
+        'f': isFolder,
+        's': size,
+        'c': children.map((c) => c.toJson()).toList(),
+      };
+
+  factory _TreeNode.fromJson(Map<String, dynamic> json) {
+    final node = _TreeNode(
+      name: json['n'] as String,
+      path: json['p'] as String,
+      isFolder: json['f'] as bool,
+      size: json['s'] as int? ?? 0,
+    );
+    for (final c in (json['c'] as List? ?? [])) {
+      node.children.add(_TreeNode.fromJson(c as Map<String, dynamic>));
+    }
+    return node;
   }
 }
