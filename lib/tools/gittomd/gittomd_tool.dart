@@ -37,14 +37,13 @@ class GittomdPage extends StatefulWidget {
 }
 
 class _GittomdPageState extends State<GittomdPage> {
-  // ── Session cache (survives navigation within a single app session) ──
   static final Map<String, String> _mdMem = {};
   static final Map<String, Map<String, dynamic>> _treeMem = {};
   static SharedPreferences? _prefs;
 
   static const _kLastUrl = 'gittomd_last_url';
   static const _kLastMode = 'gittomd_last_mode';
-  static const _maxCacheBytes = 2 * 1024 * 1024; // 2 MB per entry
+  static const _maxCacheBytes = 2 * 1024 * 1024;
 
   final _urlController = TextEditingController();
   final _pickerSearchController = TextEditingController();
@@ -55,7 +54,6 @@ class _GittomdPageState extends State<GittomdPage> {
   String _markdown = '';
   String? _resolvedRepo;
 
-  // Picker state
   List<_TreeNode> _treeRoots = [];
   Set<String> _selectedPaths = {};
   Set<String> _expandedFolders = {};
@@ -65,7 +63,6 @@ class _GittomdPageState extends State<GittomdPage> {
   String _treeBranch = 'main';
   String _pickerQuery = '';
 
-  // Generation progress
   int _genProgress = 0;
   int _genTotal = 0;
 
@@ -88,7 +85,6 @@ class _GittomdPageState extends State<GittomdPage> {
     super.dispose();
   }
 
-  // ── Cache helpers ──
   static String _mdKey(String owner, String repo, String mode) =>
       'gittomd_md_${owner}_${repo}_$mode';
 
@@ -105,7 +101,7 @@ class _GittomdPageState extends State<GittomdPage> {
 
   Future<void> _saveMarkdown(
       String owner, String repo, String mode, String md) async {
-    if (md.length > _maxCacheBytes) return; // skip huge payloads
+    if (md.length > _maxCacheBytes) return;
     final k = _mdKey(owner, repo, mode);
     _mdMem[k] = md;
     await _prefs?.setString(k, md);
@@ -165,10 +161,8 @@ class _GittomdPageState extends State<GittomdPage> {
 
     _resolvedRepo = '${parsed.owner}/${parsed.repo}';
 
-    // Restore markdown for this mode
     final md = await _loadMarkdown(parsed.owner, parsed.repo, _mode.name);
 
-    // Restore picker tree if Pick mode
     if (_mode == _Mode.pick) {
       final treeData = await _loadPickerState(parsed.owner, parsed.repo);
       if (treeData != null) {
@@ -193,7 +187,6 @@ class _GittomdPageState extends State<GittomdPage> {
     if (mounted) setState(() {});
   }
 
-  // ─────────────────────────────────────────────────────────────
   Map<String, String> get _headers {
     final h = <String, String>{
       'User-Agent': 'Hridoys-ToolBox',
@@ -246,10 +239,8 @@ class _GittomdPageState extends State<GittomdPage> {
       return;
     }
 
-    // Restore markdown for the new mode
     final md = await _loadMarkdown(parsed.owner, parsed.repo, newMode.name);
 
-    // Restore picker state if switching to Pick
     Map<String, dynamic>? treeData;
     if (newMode == _Mode.pick) {
       treeData = await _loadPickerState(parsed.owner, parsed.repo);
@@ -281,7 +272,6 @@ class _GittomdPageState extends State<GittomdPage> {
     });
   }
 
-  // ─────────────────────────── FETCH ───────────────────────────
   Future<void> _fetch() async {
     final parsed = _parseRepoUrl(_urlController.text);
     if (parsed == null) {
@@ -429,7 +419,6 @@ class _GittomdPageState extends State<GittomdPage> {
     }
   }
 
-  // ─────────────────────────── PICKER ───────────────────────────
   Future<void> _loadTree(String owner, String repo) async {
     final repoRes = await http.get(
       Uri.parse('https://api.github.com/repos/$owner/$repo'),
@@ -699,7 +688,6 @@ class _GittomdPageState extends State<GittomdPage> {
     }
   }
 
-  // ─────────────────────────── UTILS ───────────────────────────
   int _longestBacktickRun(String s) {
     var max = 0, cur = 0;
     for (final ch in s.codeUnits) {
@@ -848,11 +836,13 @@ class _GittomdPageState extends State<GittomdPage> {
       ),
       body: Column(
         children: [
+          // ── URL input with embedded fetch icon ──
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: TextField(
               controller: _urlController,
               keyboardType: TextInputType.url,
+              textInputAction: TextInputAction.go,
               decoration: InputDecoration(
                 hintText: 'https://github.com/owner/repo',
                 prefixIcon: const Icon(Icons.link),
@@ -861,55 +851,64 @@ class _GittomdPageState extends State<GittomdPage> {
                 ),
                 filled: true,
                 fillColor: Colors.white.withValues(alpha: 0.05),
+                suffixIcon: Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: _loading
+                      ? const Padding(
+                          padding: EdgeInsets.all(14),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2.2),
+                          ),
+                        )
+                      : IconButton(
+                          tooltip: 'Fetch',
+                          onPressed: _fetch,
+                          icon: const Icon(Icons.arrow_circle_right),
+                          iconSize: 26,
+                        ),
+                ),
               ),
-              onSubmitted: (_) => _fetch(),
+              onSubmitted: (_) {
+                if (!_loading) _fetch();
+              },
             ),
           ),
+
+          // ── Mode selector (full width now) ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: SegmentedButton<_Mode>(
-                      segments: const [
-                        ButtonSegment(
-                          value: _Mode.readme,
-                          label: Text('README'),
-                          icon: Icon(Icons.article_outlined, size: 14),
-                        ),
-                        ButtonSegment(
-                          value: _Mode.fullRepo,
-                          label: Text('Full'),
-                          icon: Icon(Icons.folder_zip_outlined, size: 14),
-                        ),
-                        ButtonSegment(
-                          value: _Mode.pick,
-                          label: Text('Pick'),
-                          icon: Icon(Icons.checklist, size: 14),
-                        ),
-                      ],
-                      selected: {_mode},
-                      onSelectionChanged: _onModeChanged,
-                    ),
+            child: SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<_Mode>(
+                segments: const [
+                  ButtonSegment(
+                    value: _Mode.readme,
+                    label: Text('README'),
+                    icon: Icon(Icons.article_outlined, size: 14),
                   ),
+                  ButtonSegment(
+                    value: _Mode.fullRepo,
+                    label: Text('Full'),
+                    icon: Icon(Icons.folder_zip_outlined, size: 14),
+                  ),
+                  ButtonSegment(
+                    value: _Mode.pick,
+                    label: Text('Pick'),
+                    icon: Icon(Icons.checklist, size: 14),
+                  ),
+                ],
+                selected: {_mode},
+                onSelectionChanged: _onModeChanged,
+                showSelectedIcon: false,
+                style: const ButtonStyle(
+                  visualDensity: VisualDensity.compact,
                 ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: _loading ? null : _fetch,
-                  icon: _loading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh, size: 18),
-                  label: const Text('Fetch'),
-                ),
-              ],
+              ),
             ),
           ),
+
           if (!hasToken)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -997,7 +996,7 @@ class _GittomdPageState extends State<GittomdPage> {
           ),
         );
       }
-      return const Center(child: CircularProgressIndicator());
+      return const SizedBox.shrink();
     }
 
     if (_mode == _Mode.pick && _showPicker) {
