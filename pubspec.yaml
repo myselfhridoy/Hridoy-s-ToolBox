@@ -13,6 +13,9 @@ dependencies:
   go_router: ^14.0.0
   shared_preferences: ^2.3.2
   html: ^0.15.6
+  http: ^1.2.2
+  flutter_markdown: ^0.7.4
+  flutter_secure_storage: ^9.2.2      # ← নতুন
 
 dev_dependencies:
   flutter_test:
