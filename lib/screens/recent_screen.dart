@@ -2,20 +2,23 @@ import 'package:flutter/material.dart';
 import '../core/plugin/plugin_registry.dart';
 import '../core/plugin/tool_plugin.dart';
 import '../core/storage/usage_store.dart';
-import 'favorites_screen.dart';
+import '../core/tokens.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/tool_tiles.dart';
 
 class RecentScreen extends StatelessWidget {
   const RecentScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
     return Scaffold(
       body: SafeArea(
         child: ListenableBuilder(
           listenable: UsageStore.instance,
           builder: (context, _) {
             final byId = {
-              for (final t in PluginRegistry.instance.plugins) t.id: t
+              for (final p in PluginRegistry.instance.plugins) p.id: p,
             };
             final tools = UsageStore.instance.recents
                 .map((id) => byId[id])
@@ -26,22 +29,23 @@ class RecentScreen extends StatelessWidget {
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.xl,
+                      AppSpacing.xl,
+                      AppSpacing.md,
+                      AppSpacing.md,
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Recent',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Semantics(
+                          header: true,
+                          child: Text('Recent', style: t.headlineMedium),
                         ),
                         if (tools.isNotEmpty)
                           TextButton.icon(
-                            onPressed: () =>
-                                UsageStore.instance.clearRecents(),
-                            icon: const Icon(Icons.delete_outline, size: 18),
+                            onPressed: UsageStore.instance.clearRecents,
+                            icon: const Icon(Icons.delete_outline, size: 20),
                             label: const Text('Clear'),
                           ),
                       ],
@@ -49,45 +53,27 @@ class RecentScreen extends StatelessWidget {
                   ),
                 ),
                 if (tools.isEmpty)
-                  SliverFillRemaining(
+                  const SliverFillRemaining(
                     hasScrollBody: false,
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.history,
-                            size: 56,
-                            color: Colors.white.withValues(alpha: 0.3),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No recent tools',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white.withValues(alpha: 0.6),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Open a tool to see it here',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.white.withValues(alpha: 0.4),
-                            ),
-                          ),
-                        ],
-                      ),
+                    child: EmptyState(
+                      icon: Icons.history,
+                      title: 'No recent tools',
+                      subtitle: 'Open a tool to see it here',
                     ),
                   )
                 else
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      0,
+                      AppSpacing.lg,
+                      AppSpacing.xl,
+                    ),
                     sliver: SliverList.separated(
                       itemCount: tools.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, i) =>
-                          ToolListTile(tool: tools[i]),
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: 10),
+                      itemBuilder: (_, i) => ToolListTile(tool: tools[i]),
                     ),
                   ),
               ],
