@@ -31,7 +31,7 @@ class AppShell extends StatelessWidget {
           ),
           NavigationDestination(
             icon: Icon(Icons.history),
-            selectedIcon: Icon(Icons.history),
+            selectedIcon: Icon(Icons.history_toggle_off),
             label: 'Recent',
           ),
         ],
