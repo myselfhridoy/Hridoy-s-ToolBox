@@ -18,17 +18,24 @@ jobs:
       - name: Generate platform folders
         run: flutter create . --platforms=android
 
-      - name: Add INTERNET permission to AndroidManifest
+      - name: Add INTERNET permission
         run: |
           FILE=android/app/src/main/AndroidManifest.xml
-          if grep -q 'android.permission.INTERNET' "$FILE"; then
-            echo "INTERNET permission already present"
-          else
+          if ! grep -q 'android.permission.INTERNET' "$FILE"; then
             sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' "$FILE"
-            echo "INTERNET permission added"
           fi
-          echo "----- android/app/src/main/AndroidManifest.xml -----"
-          head -20 "$FILE"
+
+      - name: Fix Gradle distribution URL (avoid 504 on GitHub releases)
+        run: |
+          WRAPPER=android/gradle/wrapper/gradle-wrapper.properties
+          if [ -f "$WRAPPER" ]; then
+            # Replace any GitHub release or old URL with the stable official CDN
+            sed -i 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-9.3.1-all.zip#' "$WRAPPER"
+            echo "----- Updated gradle-wrapper.properties -----"
+            grep distributionUrl "$WRAPPER"
+          else
+            echo "Wrapper file not found, skipping..."
+          fi
 
       - name: Install dependencies
         run: flutter pub get
