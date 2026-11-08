@@ -11,9 +11,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          cache: true
 
       - name: Generate platform folders
         run: flutter create . --platforms=android
@@ -25,56 +31,11 @@ jobs:
             sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' "$FILE"
           fi
 
-      # ✅ Gradle distribution mirror
-      - name: Set Gradle distribution mirror
+      - name: Set minSdk 23 (flutter_secure_storage)
         run: |
-          WRAPPER=android/gradle/wrapper/gradle-wrapper.properties
-          mkdir -p $(dirname "$WRAPPER")
-          cat > "$WRAPPER" <<'EOF'
-          distributionBase=GRADLE_USER_HOME
-          distributionPath=wrapper/dists
-          zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists
-          distributionUrl=https\://mirrors.cloud.tencent.com/gradle/gradle-9.3.1-bin.zip
-          networkTimeout=10000
-          validateDistributionUrl=true
-          EOF
-
-      # ✅ settings.gradle.kts — মিরর ও include(":app") সহ
-      - name: Configure settings.gradle.kts
-        run: |
-          SETTINGS=android/settings.gradle.kts
-          cat > "$SETTINGS" <<'EOF'
-          pluginManagement {
-              repositories {
-                  maven { url = uri("https://maven.aliyun.com/repository/public") }
-                  maven { url = uri("https://maven.aliyun.com/repository/google") }
-                  maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
-                  maven { url = uri("https://maven.aliyun.com/repository/central") }
-                  maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-
-          dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
-              repositories {
-                  maven { url = uri("https://maven.aliyun.com/repository/public") }
-                  maven { url = uri("https://maven.aliyun.com/repository/google") }
-                  maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
-                  maven { url = uri("https://maven.aliyun.com/repository/central") }
-                  maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
-                  google()
-                  mavenCentral()
-              }
-          }
-
-          include(":app")
-          rootProject.name = "hridoys_toolbox"
-          EOF
-          echo "----- settings.gradle.kts updated -----"
+          FILE=android/app/build.gradle.kts
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' "$FILE"
+          grep -n "minSdk" "$FILE"
 
       - name: Install dependencies
         run: flutter pub get
