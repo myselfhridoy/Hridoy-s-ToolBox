@@ -18,6 +18,18 @@ jobs:
       - name: Generate platform folders
         run: flutter create . --platforms=android
 
+      - name: Add INTERNET permission to AndroidManifest
+        run: |
+          FILE=android/app/src/main/AndroidManifest.xml
+          if grep -q 'android.permission.INTERNET' "$FILE"; then
+            echo "INTERNET permission already present"
+          else
+            sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' "$FILE"
+            echo "INTERNET permission added"
+          fi
+          echo "----- android/app/src/main/AndroidManifest.xml -----"
+          head -20 "$FILE"
+
       - name: Install dependencies
         run: flutter pub get
 
