@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'core/plugin/plugin_registry.dart';
+import 'core/storage/github_token_store.dart';
 import 'core/storage/usage_store.dart';
 import 'core/theme.dart';
 import 'screens/favorites_screen.dart';
@@ -9,6 +10,7 @@ import 'screens/library_screen.dart';
 import 'screens/recent_screen.dart';
 import 'screens/search_screen.dart';
 import 'tools/example_tool/example_tool.dart';
+import 'tools/gittomd/gittomd_tool.dart';
 import 'tools/html_parser/html_parser_tool.dart';
 import 'widgets/app_shell.dart';
 import 'widgets/tool_host.dart';
@@ -16,9 +18,11 @@ import 'widgets/tool_host.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await UsageStore.instance.init();
+  await GitHubTokenStore.instance.load();
   PluginRegistry.instance.registerAll([
     ExampleTool(),
     HtmlParserTool(),
+    GittomdTool(),
   ]);
   runApp(const HridoysToolboxApp());
 }
