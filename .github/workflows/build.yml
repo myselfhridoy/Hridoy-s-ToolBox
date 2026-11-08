@@ -25,19 +25,8 @@ jobs:
             sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' "$FILE"
           fi
 
-      # ✅ Gradle ডিস্ট্রিবিউশন ক্যাশ করা (পুনরায় ডাউনলোড এড়াতে)
-      - name: Cache Gradle distribution
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/wrapper/dists
-            ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      # ✅ flutter create-এর পরে wrapper ফাইলটি Tencent মিরর ব্যবহার করতে বাধ্য করা
-      - name: Force Gradle mirror URL
+      # ✅ ধাপ ১: Gradle wrapper মিরর (Tencent)
+      - name: Set Gradle distribution mirror
         run: |
           WRAPPER=android/gradle/wrapper/gradle-wrapper.properties
           mkdir -p $(dirname "$WRAPPER")
@@ -50,8 +39,58 @@ jobs:
           networkTimeout=10000
           validateDistributionUrl=true
           EOF
-          echo "----- Wrapper file content -----"
-          cat "$WRAPPER"
+
+      # ✅ ধাপ ২: Maven মিরর (Aliyun) — build.gradle.kts-এ ইনজেক্ট
+      - name: Inject Aliyun Maven mirrors
+        run: |
+          ROOT_GRADLE=android/build.gradle.kts
+          APP_GRADLE=android/app/build.gradle.kts
+
+          # রুট build.gradle.kts-এ allprojects repositories যোগ
+          if ! grep -q 'maven.aliyun.com' "$ROOT_GRADLE"; then
+            python3 -c "
+          import re
+          p = '$ROOT_GRADLE'
+          s = open(p).read()
+          inject = '''allprojects {
+              repositories {
+                  maven { url = uri(\"https://maven.aliyun.com/repository/public\") }
+                  maven { url = uri(\"https://maven.aliyun.com/repository/google\") }
+                  maven { url = uri(\"https://maven.aliyun.com/repository/gradle-plugin\") }
+                  maven { url = uri(\"https://maven.aliyun.com/repository/central\") }
+                  google()
+                  mavenCentral()
+              }
+          }
+          '''
+          s = inject + s
+          open(p, 'w').write(s)
+          "
+          fi
+
+          # অ্যাপ build.gradle.kts-এ ও একইভাবে
+          if ! grep -q 'maven.aliyun.com' "$APP_GRADLE"; then
+            python3 -c "
+          p = '$APP_GRADLE'
+          s = open(p).read()
+          inject = '''allprojects {
+              repositories {
+                  maven { url = uri(\"https://maven.aliyun.com/repository/public\") }
+                  maven { url = uri(\"https://maven.aliyun.com/repository/google\") }
+                  maven { url = uri(\"https://maven.aliyun.com/repository/gradle-plugin\") }
+                  maven { url = uri(\"https://maven.aliyun.com/repository/central\") }
+                  google()
+                  mavenCentral()
+              }
+          }
+          '''
+          s = inject + s
+          open(p, 'w').write(s)
+          "
+          fi
+
+          echo '----- android/build.gradle.kts (head) -----'
+          head -20 "$ROOT_GRADLE"
 
       - name: Install dependencies
         run: flutter pub get
