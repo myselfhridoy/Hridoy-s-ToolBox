@@ -12,6 +12,7 @@ import 'screens/search_screen.dart';
 import 'tools/example_tool/example_tool.dart';
 import 'tools/gittomd/gittomd_tool.dart';
 import 'tools/html_parser/html_parser_tool.dart';
+import 'tools/iptv_finder/iptv_finder_tool.dart';
 import 'widgets/app_shell.dart';
 import 'widgets/tool_host.dart';
 
@@ -23,6 +24,7 @@ Future<void> main() async {
     ExampleTool(),
     HtmlParserTool(),
     GittomdTool(),
+    IptvFinderTool(),
   ]);
   runApp(const HridoysToolboxApp());
 }
