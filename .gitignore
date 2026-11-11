@@ -9,3 +9,10 @@ linux/
 macos/
 windows/
 web/
+
+# Keystore and Signing Secrets (NEVER COMMIT)
+*.jks
+*.keystore
+*.p12
+key.properties
+keystore_base64.txt

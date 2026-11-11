@@ -4,10 +4,22 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build Type'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - release
+          - debug
+          - both
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      BUILD_TYPE: ${{ github.event.inputs.build_type || 'release' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -37,14 +49,36 @@ jobs:
           sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' "$FILE"
           grep -n "minSdk" "$FILE"
 
+      - name: Configure Keystore & Signing for Release
+        if: ${{ env.BUILD_TYPE == 'release' || env.BUILD_TYPE == 'both' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.KEYSTORE_PASSWORD }}
+        run: python3 .github/scripts/configure_keystore.py
+
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build release APK
+      - name: Build Release APK
+        if: ${{ env.BUILD_TYPE == 'release' || env.BUILD_TYPE == 'both' }}
         run: flutter build apk --release
 
-      - name: Upload APK
+      - name: Build Debug APK
+        if: ${{ env.BUILD_TYPE == 'debug' || env.BUILD_TYPE == 'both' }}
+        run: flutter build apk --debug
+
+      - name: Upload Release APK
+        if: ${{ env.BUILD_TYPE == 'release' || env.BUILD_TYPE == 'both' }}
         uses: actions/upload-artifact@v4
         with:
-          name: hridoys-toolbox-apk
+          name: hridoys-toolbox-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload Debug APK
+        if: ${{ env.BUILD_TYPE == 'debug' || env.BUILD_TYPE == 'both' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hridoys-toolbox-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
