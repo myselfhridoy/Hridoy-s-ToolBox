@@ -888,6 +888,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('IPTV Finder'),
+        centerTitle: false,
+        titleSpacing: 0,
         actions: [
           IconButton(
             icon: Icon(hasToken ? Icons.lock : Icons.lock_open,

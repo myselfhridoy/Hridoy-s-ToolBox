@@ -816,6 +816,8 @@ class _GittomdPageState extends State<GittomdPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('gittomd'),
+        centerTitle: false,
+        titleSpacing: 0,
         actions: [
           if (_mode == _Mode.pick && !_showPicker && _markdown.isNotEmpty)
             IconButton(

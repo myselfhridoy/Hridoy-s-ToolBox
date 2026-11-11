@@ -9,7 +9,6 @@ import 'screens/home_screen.dart';
 import 'screens/library_screen.dart';
 import 'screens/recent_screen.dart';
 import 'screens/search_screen.dart';
-import 'tools/example_tool/example_tool.dart';
 import 'tools/gittomd/gittomd_tool.dart';
 import 'tools/html_parser/html_parser_tool.dart';
 import 'tools/iptv_finder/iptv_finder_tool.dart';
@@ -21,7 +20,6 @@ Future<void> main() async {
   await UsageStore.instance.init();
   await GitHubTokenStore.instance.load();
   PluginRegistry.instance.registerAll([
-    ExampleTool(),
     HtmlParserTool(),
     GittomdTool(),
     IptvFinderTool(),

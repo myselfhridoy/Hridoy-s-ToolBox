@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/plugin/plugin_registry.dart';
 import '../core/plugin/tool_plugin.dart';
 import '../core/tokens.dart';
+import '../widgets/glass_card.dart';
 import '../widgets/tool_tiles.dart';
 
 class LibraryScreen extends StatefulWidget {
@@ -32,6 +33,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final categoriesToShow =
         _selectedCategory == null ? allCategories : [_selectedCategory!];
 
+    final areAllCollapsed = allCategories.isNotEmpty &&
+        allCategories.every((cat) => _collapsed.contains(cat));
+
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
@@ -45,24 +49,57 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   AppSpacing.md,
                 ),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Semantics(
                       header: true,
                       child: Text('Library', style: t.headlineMedium),
                     ),
                     const Spacer(),
-                    Text(
-                      '${tools.length} tools · ${allCategories.length} categories',
-                      style: t.bodySmall?.copyWith(color: AppColors.textMuted),
-                    ),
+                    if (allCategories.isNotEmpty)
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          backgroundColor: AppColors.fieldFill,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            side: const BorderSide(color: AppColors.glassBorder),
+                          ),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            if (areAllCollapsed) {
+                              _collapsed.clear();
+                            } else {
+                              _collapsed.addAll(allCategories);
+                            }
+                          });
+                        },
+                        icon: Icon(
+                          areAllCollapsed
+                              ? Icons.unfold_more_rounded
+                              : Icons.unfold_less_rounded,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                        label: Text(
+                          areAllCollapsed ? 'Expand all' : 'Collapse all',
+                          style: t.bodySmall?.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
             ),
             SliverToBoxAdapter(
               child: SizedBox(
-                height: 52,
+                height: 48,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   padding:
@@ -77,13 +114,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       (cat) => _FilterChip(
                         label: cat,
                         selected: _selectedCategory == cat,
-                        onTap: () => setState(() => _selectedCategory = cat),
+                        onTap: () => setState(() {
+                          _selectedCategory = cat;
+                          _collapsed.remove(cat); // ensure selected is expanded
+                        }),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
+            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm)),
             for (final cat in categoriesToShow)
               ..._buildCategory(context, cat, grouped[cat] ?? []),
             const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
@@ -104,9 +145,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
       SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            AppSpacing.md,
-            AppSpacing.lg,
+            AppSpacing.xl,
+            AppSpacing.sm,
+            AppSpacing.xl,
             AppSpacing.xs,
           ),
           child: Semantics(
@@ -114,7 +155,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
             expanded: !collapsed,
             label: '$category, ${tools.length} tools',
             excludeSemantics: true,
-            child: InkWell(
+            child: GlassCard(
+              radius: AppRadius.md,
               onTap: () => setState(() {
                 if (collapsed) {
                   _collapsed.remove(category);
@@ -122,29 +164,49 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   _collapsed.add(category);
                 }
               }),
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              child: ConstrainedBox(
-                constraints:
-                    const BoxConstraints(minHeight: AppSizes.minTouch),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: 10,
+                ),
                 child: Row(
                   children: [
-                    const SizedBox(width: AppSpacing.xs),
-                    Icon(
-                      collapsed
-                          ? Icons.keyboard_arrow_right
-                          : Icons.keyboard_arrow_down,
-                      size: AppSizes.icon,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(category, style: t.titleLarge),
-                    const Spacer(),
-                    Text(
-                      '${tools.length}',
-                      style: t.bodyMedium?.copyWith(
-                        color: AppColors.textMuted,
+                    AnimatedRotation(
+                      turns: collapsed ? 0 : 0.25,
+                      duration: const Duration(milliseconds: 200),
+                      child: const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 13,
+                        color: AppColors.textSecondary,
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.xs),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      category,
+                      style: t.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${tools.length}',
+                        style: t.labelSmall?.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -154,13 +216,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
       ),
       if (!collapsed)
         SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl,
+            AppSpacing.xs,
+            AppSpacing.xl,
+            AppSpacing.sm,
+          ),
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-              childAspectRatio: 1.1,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.45,
             ),
             delegate: SliverChildBuilderDelegate(
               (context, i) => ToolCard(tool: tools[i]),

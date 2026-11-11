@@ -662,6 +662,8 @@ class _HtmlParserPageState extends State<HtmlParserPage>
     return Scaffold(
       appBar: AppBar(
         title: const Text('HTML Parser'),
+        centerTitle: false,
+        titleSpacing: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.content_paste),

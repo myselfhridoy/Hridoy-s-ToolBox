@@ -44,6 +44,8 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 0,
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
