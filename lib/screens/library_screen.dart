@@ -37,98 +37,102 @@ class _LibraryScreenState extends State<LibraryScreen> {
         allCategories.every((cat) => _collapsed.contains(cat));
 
     return Scaffold(
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.xl,
-                  AppSpacing.xl,
-                  AppSpacing.xl,
-                  AppSpacing.md,
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Semantics(
-                      header: true,
-                      child: Text('Library', style: t.headlineMedium),
-                    ),
-                    const Spacer(),
-                    if (allCategories.isNotEmpty)
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
+      body: AmbientBackdrop(
+        child: SafeArea(
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl,
+                    AppSpacing.xl,
+                    AppSpacing.xl,
+                    AppSpacing.md,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Semantics(
+                        header: true,
+                        child: Text('Library', style: t.headlineMedium),
+                      ),
+                      const Spacer(),
+                      if (allCategories.isNotEmpty)
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            backgroundColor: AppColors.fieldFill,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              side: const BorderSide(
+                                color: AppColors.glassBorder,
+                              ),
+                            ),
                           ),
-                          backgroundColor: AppColors.fieldFill,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            side: const BorderSide(color: AppColors.glassBorder),
-                          ),
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            if (areAllCollapsed) {
-                              _collapsed.clear();
-                            } else {
-                              _collapsed.addAll(allCategories);
-                            }
-                          });
-                        },
-                        icon: Icon(
-                          areAllCollapsed
-                              ? Icons.unfold_more_rounded
-                              : Icons.unfold_less_rounded,
-                          size: 16,
-                          color: AppColors.primary,
-                        ),
-                        label: Text(
-                          areAllCollapsed ? 'Expand all' : 'Collapse all',
-                          style: t.bodySmall?.copyWith(
+                          onPressed: () {
+                            setState(() {
+                              if (areAllCollapsed) {
+                                _collapsed.clear();
+                              } else {
+                                _collapsed.addAll(allCategories);
+                              }
+                            });
+                          },
+                          icon: Icon(
+                            areAllCollapsed
+                                ? Icons.unfold_more_rounded
+                                : Icons.unfold_less_rounded,
+                            size: 16,
                             color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
+                          ),
+                          label: Text(
+                            areAllCollapsed ? 'Expand all' : 'Collapse all',
+                            style: t.bodySmall?.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: 48,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                  children: [
-                    _FilterChip(
-                      label: 'All',
-                      selected: _selectedCategory == null,
-                      onTap: () => setState(() => _selectedCategory = null),
-                    ),
-                    ...allCategories.map(
-                      (cat) => _FilterChip(
-                        label: cat,
-                        selected: _selectedCategory == cat,
-                        onTap: () => setState(() {
-                          _selectedCategory = cat;
-                          _collapsed.remove(cat); // ensure selected is expanded
-                        }),
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 48,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                    children: [
+                      _FilterChip(
+                        label: 'All',
+                        selected: _selectedCategory == null,
+                        onTap: () => setState(() => _selectedCategory = null),
                       ),
-                    ),
-                  ],
+                      ...allCategories.map(
+                        (cat) => _FilterChip(
+                          label: cat,
+                          selected: _selectedCategory == cat,
+                          onTap: () => setState(() {
+                            _selectedCategory = cat;
+                            _collapsed.remove(cat);
+                          }),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm)),
-            for (final cat in categoriesToShow)
-              ..._buildCategory(context, cat, grouped[cat] ?? []),
-            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
-          ],
+              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm)),
+              for (final cat in categoriesToShow)
+                ..._buildCategory(context, cat, grouped[cat] ?? []),
+              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
+            ],
+          ),
         ),
       ),
     );
@@ -227,7 +231,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               crossAxisCount: 2,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 1.45,
+              childAspectRatio: 1.28,
             ),
             delegate: SliverChildBuilderDelegate(
               (context, i) => ToolCard(tool: tools[i]),
