@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../core/plugin/tool_plugin.dart';
 import '../../core/tokens.dart';
 import '../../core/utils/html_utils.dart';
+import '../../widgets/glass_card.dart';
 
 class HtmlParserTool implements ToolPlugin {
   @override
@@ -666,12 +667,12 @@ class _HtmlParserPageState extends State<HtmlParserPage>
         titleSpacing: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.content_paste),
+            icon: const Icon(Icons.content_paste_rounded),
             tooltip: 'Paste HTML',
             onPressed: _paste,
           ),
           IconButton(
-            icon: const Icon(Icons.auto_awesome),
+            icon: const Icon(Icons.auto_awesome_rounded),
             tooltip: 'Load sample',
             onPressed: () {
               _htmlC.text = _sampleHtml;
@@ -679,117 +680,177 @@ class _HtmlParserPageState extends State<HtmlParserPage>
             },
           ),
           IconButton(
-            icon: const Icon(Icons.clear_all),
+            icon: const Icon(Icons.clear_all_rounded),
             tooltip: 'Clear',
             onPressed: _clearAll,
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _urlC,
-                    keyboardType: TextInputType.url,
-                    style: const TextStyle(fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText: 'https://example.com/page',
-                      prefixIcon: const Icon(Icons.link, size: 18),
-                      isDense: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+      body: AmbientBackdrop(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                AppSpacing.sm,
+              ),
+              child: GlassCard(
+                radius: AppRadius.lg,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _urlC,
+                              keyboardType: TextInputType.url,
+                              style: const TextStyle(fontSize: 13),
+                              decoration: const InputDecoration(
+                                hintText: 'https://example.com/page',
+                                prefixIcon: Icon(
+                                  Icons.link_rounded,
+                                  size: 18,
+                                  color: AppColors.primary,
+                                ),
+                                isDense: true,
+                              ),
+                              onSubmitted: (_) => _fetchUrl(),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          FilledButton(
+                            onPressed: _loading ? null : _fetchUrl,
+                            child: _loading
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text('Fetch'),
+                          ),
+                        ],
                       ),
-                    ),
-                    onSubmitted: (_) => _fetchUrl(),
+                      const SizedBox(height: AppSpacing.sm),
+                      TextField(
+                        controller: _htmlC,
+                        maxLines: 3,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                        ),
+                        decoration: const InputDecoration(
+                          hintText: '…অথবা HTML এখানে পেস্ট করুন',
+                          isDense: true,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _parse,
+                          icon: const Icon(Icons.play_arrow_rounded),
+                          label: const Text('Parse'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _loading ? null : _fetchUrl,
-                  child: _loading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Fetch'),
+              ),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  0,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
                 ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: _htmlC,
-              maxLines: 3,
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-              decoration: InputDecoration(
-                hintText: '…অথবা HTML এখানে পেস্ট করুন',
-                isDense: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Text(
+                    _error!,
+                    style:
+                        const TextStyle(color: AppColors.error, fontSize: 12),
+                  ),
                 ),
-                filled: true,
-                fillColor: AppColors.fieldFill,
               ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-            child: SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _parse,
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('Parse'),
-              ),
-            ),
-          ),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Text(
-                _error!,
-                style: const TextStyle(color: AppColors.error, fontSize: 12),
-              ),
-            ),
-          TabBar(
-            controller: _tab,
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            tabs: const [
-              Tab(text: 'AI Pack'),
-              Tab(text: 'Clean'),
-              Tab(text: 'Select'),
-              Tab(text: 'Tree'),
-              Tab(text: 'Data'),
-            ],
-          ),
-          Expanded(
-            child: TabBarView(
+            TabBar(
               controller: _tab,
-              children: [
-                _aiTab(),
-                _cleanTab(),
-                _selectTab(),
-                _treeTab(),
-                _dataTab(),
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              tabs: const [
+                Tab(text: 'AI Pack'),
+                Tab(text: 'Clean'),
+                Tab(text: 'Select'),
+                Tab(text: 'Tree'),
+                Tab(text: 'Data'),
               ],
             ),
-          ),
-        ],
+            Expanded(
+              child: TabBarView(
+                controller: _tab,
+                children: [
+                  _aiTab(),
+                  _cleanTab(),
+                  _selectTab(),
+                  _treeTab(),
+                  _dataTab(),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _empty(String m) => Center(
-        child: Text(
-          m,
-          style: TextStyle(color: AppColors.textMuted),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xxl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.code_rounded,
+                  size: 24,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                m,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textMuted),
+              ),
+            ],
+          ),
         ),
       );
 
@@ -802,89 +863,142 @@ class _HtmlParserPageState extends State<HtmlParserPage>
         pack.length > 2500 ? '${pack.substring(0, 2500)}\n…' : pack;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
-        TextField(
-          controller: _taskC,
-          maxLines: 3,
-          decoration: InputDecoration(
-            labelText: 'কী extract করতে চান?',
-            hintText: 'যেমন: সব প্রোডাক্টের নাম, দাম আর লিংক',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              flex: 3,
-              child: DropdownButtonFormField<String>(
-                value: _lang,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Language',
-                  isDense: true,
-                  border: OutlineInputBorder(),
+        GlassCard(
+          radius: AppRadius.lg,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: _taskC,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'কী extract করতে চান?',
+                    hintText: 'যেমন: সব প্রোডাক্টের নাম, দাম আর লিংক',
+                  ),
                 ),
-                items: [
-                  for (final l in _langs)
-                    DropdownMenuItem(
-                      value: l,
-                      child: Text(l, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: DropdownButtonFormField<String>(
+                        value: _lang,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Language',
+                          isDense: true,
+                        ),
+                        items: [
+                          for (final l in _langs)
+                            DropdownMenuItem(
+                              value: l,
+                              child: Text(l, overflow: TextOverflow.ellipsis),
+                            ),
+                        ],
+                        onChanged: (v) => setState(() => _lang = v ?? _lang),
+                      ),
                     ),
-                ],
-                onChanged: (v) => setState(() => _lang = v ?? _lang),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              flex: 2,
-              child: DropdownButtonFormField<int>(
-                value: _maxChars,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'HTML limit',
-                  isDense: true,
-                  border: OutlineInputBorder(),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      flex: 2,
+                      child: DropdownButtonFormField<int>(
+                        value: _maxChars,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'HTML limit',
+                          isDense: true,
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 15000, child: Text('15k')),
+                          DropdownMenuItem(value: 30000, child: Text('30k')),
+                          DropdownMenuItem(value: 60000, child: Text('60k')),
+                          DropdownMenuItem(value: 0, child: Text('All')),
+                        ],
+                        onChanged: (v) =>
+                            setState(() => _maxChars = v ?? _maxChars),
+                      ),
+                    ),
+                  ],
                 ),
-                items: const [
-                  DropdownMenuItem(value: 15000, child: Text('15k')),
-                  DropdownMenuItem(value: 30000, child: Text('30k')),
-                  DropdownMenuItem(value: 60000, child: Text('60k')),
-                  DropdownMenuItem(value: 0, child: Text('All')),
-                ],
-                onChanged: (v) => setState(() => _maxChars = v ?? _maxChars),
-              ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '${pack.length} chars · ≈ $tokens tokens',
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (_matches.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Text(
+                          '+ selected',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                FilledButton.icon(
+                  onPressed: () => _copy(_buildPack(), 'AI prompt কপি হয়েছে'),
+                  icon: const Icon(Icons.copy_all_rounded),
+                  label: const Text('Copy AI Prompt'),
+                ),
+              ],
             ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Text(
-          '${pack.length} chars · ≈ $tokens tokens'
-          '${_matches.isNotEmpty ? ' · selected elements included' : ''}',
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.textMuted,
           ),
         ),
-        const SizedBox(height: 8),
-        FilledButton.icon(
-          onPressed: () => _copy(_buildPack(), 'AI prompt কপি হয়েছে'),
-          icon: const Icon(Icons.copy_all),
-          label: const Text('Copy AI Prompt'),
-        ),
-        const SizedBox(height: 16),
-        Text(
+        const SizedBox(height: AppSpacing.lg),
+        const Text(
           'Preview',
           style: TextStyle(
             fontSize: 12,
+            fontWeight: FontWeight.w600,
             color: AppColors.textMuted,
           ),
         ),
         const SizedBox(height: 6),
-        SelectableText(
-          preview,
-          style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.navBg,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: AppColors.glassBorder),
+          ),
+          child: SelectableText(
+            preview,
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+          ),
         ),
       ],
     );
@@ -899,14 +1013,19 @@ class _HtmlParserPageState extends State<HtmlParserPage>
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.sm,
+            AppSpacing.sm,
+            AppSpacing.xs,
+          ),
           child: Row(
             children: [
               Expanded(
                 child: Text(
                   '${_htmlC.text.length} → ${_clean.length} chars '
                   '(≈ ${(_clean.length / 4).round()} tokens)',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textMuted,
                   ),
@@ -914,7 +1033,7 @@ class _HtmlParserPageState extends State<HtmlParserPage>
               ),
               IconButton(
                 tooltip: 'Copy clean HTML',
-                icon: const Icon(Icons.copy, size: 20),
+                icon: const Icon(Icons.copy_rounded, size: 20),
                 onPressed: () => _copy(_clean, 'Clean HTML কপি হয়েছে'),
               ),
             ],
@@ -922,10 +1041,24 @@ class _HtmlParserPageState extends State<HtmlParserPage>
         ),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: SelectableText(
-              shown,
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              0,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.navBg,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.glassBorder),
+              ),
+              child: SelectableText(
+                shown,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
             ),
           ),
         ),
@@ -935,37 +1068,48 @@ class _HtmlParserPageState extends State<HtmlParserPage>
 
   // ── Select ──
   Widget _selectTab() {
-    const quick = ['a[href]', 'img', 'h1,h2,h3', 'table', 'form', 'button', 'input'];
+    const quick = [
+      'a[href]',
+      'img',
+      'h1,h2,h3',
+      'table',
+      'form',
+      'button',
+      'input',
+    ];
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.xs,
+          ),
           child: Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _selC,
-                  style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-                  decoration: InputDecoration(
+                  style:
+                      const TextStyle(fontFamily: 'monospace', fontSize: 13),
+                  decoration: const InputDecoration(
                     hintText: 'CSS selector, e.g. ul#menu > li.item',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
                     isDense: true,
                   ),
                   onSubmitted: (_) => _select(),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               FilledButton(onPressed: _select, child: const Text('Run')),
             ],
           ),
         ),
         SizedBox(
-          height: 48,
+          height: 46,
           child: ListView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             children: [
               for (final q in quick)
                 Padding(
@@ -980,14 +1124,19 @@ class _HtmlParserPageState extends State<HtmlParserPage>
         ),
         if (_matches.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 8, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.xs,
+              AppSpacing.sm,
+              0,
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
                     '$_matchTotal matches'
                     '${_matchTotal > _matches.length ? ' (প্রথম ${_matches.length} দেখানো)' : ''}',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textMuted,
                     ),
@@ -1006,62 +1155,81 @@ class _HtmlParserPageState extends State<HtmlParserPage>
           child: _matches.isEmpty
               ? _empty(_doc == null ? 'আগে Parse করুন' : 'No matches')
               : ListView.separated(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   itemCount: _matches.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: AppSpacing.sm),
                   itemBuilder: (_, i) {
                     final m = _matches[i];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SelectableText(
-                                  m.path,
-                                  style: TextStyle(
-                                    fontFamily: 'monospace',
-                                    fontSize: 12,
-                                    color: Theme.of(context).colorScheme.primary,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '<${m.tag}>',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'monospace',
-                                  ),
-                                ),
-                                for (final e in m.attrs.entries)
-                                  Text(
-                                    '  ${e.key}="${_short(e.value, 120)}"',
+                    return GlassCard(
+                      radius: AppRadius.md,
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SelectableText(
+                                    m.path,
                                     style: const TextStyle(
                                       fontFamily: 'monospace',
                                       fontSize: 12,
-                                      color: AppColors.textSecondary,
+                                      color: AppColors.primary,
                                     ),
                                   ),
-                                if (m.text.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 4),
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 7,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.secondary
+                                          .withValues(alpha: 0.14),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
                                     child: Text(
-                                      m.text,
-                                      style: const TextStyle(fontSize: 13),
+                                      '<${m.tag}>',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontFamily: 'monospace',
+                                        fontSize: 11.5,
+                                        color: AppColors.secondary,
+                                      ),
                                     ),
                                   ),
-                              ],
+                                  if (m.attrs.isNotEmpty)
+                                    const SizedBox(height: 4),
+                                  for (final e in m.attrs.entries)
+                                    Text(
+                                      '${e.key}="${_short(e.value, 120)}"',
+                                      style: const TextStyle(
+                                        fontFamily: 'monospace',
+                                        fontSize: 11.5,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  if (m.text.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: Text(
+                                        m.text,
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.copy, size: 20),
-                            tooltip: 'Copy HTML',
-                            onPressed: () => _copy(m.html, 'HTML কপি হয়েছে'),
-                          ),
-                        ],
+                            IconButton(
+                              icon: const Icon(Icons.copy_rounded, size: 19),
+                              tooltip: 'Copy HTML',
+                              onPressed: () => _copy(m.html, 'HTML কপি হয়েছে'),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -1077,15 +1245,33 @@ class _HtmlParserPageState extends State<HtmlParserPage>
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Text(
-            'যেকোনো node-এ ট্যাপ করলে তার selector তৈরি হয়ে Select ট্যাবে চলে যাবে',
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textMuted,
-            ),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.sm,
+            AppSpacing.lg,
+            AppSpacing.xs,
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.touch_app_rounded,
+                size: 15,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text(
+                  'যেকোনো node-এ ট্যাপ করলে তার selector তৈরি হয়ে Select ট্যাবে চলে যাবে',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
+        const Divider(height: 1),
         Expanded(
           child: ListView.builder(
             itemCount: _rows.length,
@@ -1105,10 +1291,10 @@ class _HtmlParserPageState extends State<HtmlParserPage>
                 },
                 child: Padding(
                   padding: EdgeInsets.only(
-                    left: 12 + r.depth * 12.0,
-                    right: 12,
-                    top: 16,
-                    bottom: 16,
+                    left: 14 + r.depth * 14.0,
+                    right: 14,
+                    top: 13,
+                    bottom: 13,
                   ),
                   child: Text.rich(
                     TextSpan(
@@ -1118,12 +1304,13 @@ class _HtmlParserPageState extends State<HtmlParserPage>
                           style: const TextStyle(
                             fontFamily: 'monospace',
                             fontSize: 12,
+                            color: AppColors.primary,
                           ),
                         ),
                         if (own.isNotEmpty)
                           TextSpan(
                             text: '  $own',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12,
                               color: AppColors.textMuted,
                             ),
@@ -1150,20 +1337,34 @@ class _HtmlParserPageState extends State<HtmlParserPage>
         Align(
           alignment: Alignment.centerRight,
           child: Padding(
-            padding: const EdgeInsets.only(right: 8, top: 4),
+            padding: const EdgeInsets.only(right: AppSpacing.md, top: 4),
             child: TextButton.icon(
               onPressed: () => _copy(_report, 'Report কপি হয়েছে'),
-              icon: const Icon(Icons.copy, size: 16),
+              icon: const Icon(Icons.copy_rounded, size: 16),
               label: const Text('Copy'),
             ),
           ),
         ),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: SelectableText(
-              _report,
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              0,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.navBg,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.glassBorder),
+              ),
+              child: SelectableText(
+                _report,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
             ),
           ),
         ),
