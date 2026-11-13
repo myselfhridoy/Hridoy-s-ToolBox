@@ -14,12 +14,16 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen> {
   String? _selectedCategory;
-  final Set<String> _collapsed = {};
+
+  /// ডিফল্টভাবে খালি — অর্থাৎ সব ক্যাটাগরি collapsed অবস্থায় থাকবে।
+  final Set<String> _expanded = {};
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final tools = PluginRegistry.instance.plugins;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final crossAxisCount = screenWidth >= 430 ? 5 : 4;
 
     final grouped = <String, List<ToolPlugin>>{};
     for (final tool in tools) {
@@ -29,12 +33,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
         grouped.putIfAbsent(cat, () => []).add(tool);
       }
     }
+    for (final list in grouped.values) {
+      list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    }
+
     final allCategories = grouped.keys.toList()..sort();
     final categoriesToShow =
         _selectedCategory == null ? allCategories : [_selectedCategory!];
 
     final areAllCollapsed = allCategories.isNotEmpty &&
-        allCategories.every((cat) => _collapsed.contains(cat));
+        allCategories.every((cat) => !_expanded.contains(cat));
 
     return Scaffold(
       body: AmbientBackdrop(
@@ -44,9 +52,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
                     AppSpacing.xl,
-                    AppSpacing.xl,
-                    AppSpacing.xl,
+                    AppSpacing.lg,
                     AppSpacing.md,
                   ),
                   child: Row(
@@ -75,9 +83,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           onPressed: () {
                             setState(() {
                               if (areAllCollapsed) {
-                                _collapsed.clear();
+                                _expanded.addAll(allCategories);
                               } else {
-                                _collapsed.addAll(allCategories);
+                                _expanded.clear();
                               }
                             });
                           },
@@ -119,7 +127,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           selected: _selectedCategory == cat,
                           onTap: () => setState(() {
                             _selectedCategory = cat;
-                            _collapsed.remove(cat);
+                            _expanded.add(cat);
                           }),
                         ),
                       ),
@@ -129,7 +137,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
               const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm)),
               for (final cat in categoriesToShow)
-                ..._buildCategory(context, cat, grouped[cat] ?? []),
+                ..._buildCategory(
+                  context,
+                  cat,
+                  grouped[cat] ?? [],
+                  crossAxisCount,
+                ),
               const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
             ],
           ),
@@ -142,41 +155,42 @@ class _LibraryScreenState extends State<LibraryScreen> {
     BuildContext context,
     String category,
     List<ToolPlugin> tools,
+    int crossAxisCount,
   ) {
     final t = Theme.of(context).textTheme;
-    final collapsed = _collapsed.contains(category);
+    final expanded = _expanded.contains(category);
     return [
       SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl,
+            AppSpacing.lg,
             AppSpacing.sm,
-            AppSpacing.xl,
+            AppSpacing.lg,
             AppSpacing.xs,
           ),
           child: Semantics(
             button: true,
-            expanded: !collapsed,
+            expanded: expanded,
             label: '$category, ${tools.length} tools',
             excludeSemantics: true,
             child: GlassCard(
               radius: AppRadius.md,
               onTap: () => setState(() {
-                if (collapsed) {
-                  _collapsed.remove(category);
+                if (expanded) {
+                  _expanded.remove(category);
                 } else {
-                  _collapsed.add(category);
+                  _expanded.add(category);
                 }
               }),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.md,
-                  vertical: 10,
+                  vertical: 12,
                 ),
                 child: Row(
                   children: [
                     AnimatedRotation(
-                      turns: collapsed ? 0 : 0.25,
+                      turns: expanded ? 0.25 : 0,
                       duration: const Duration(milliseconds: 200),
                       child: const Icon(
                         Icons.arrow_forward_ios_rounded,
@@ -218,20 +232,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         ),
       ),
-      if (!collapsed)
+      if (expanded)
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl,
+            AppSpacing.lg,
             AppSpacing.xs,
-            AppSpacing.xl,
+            AppSpacing.lg,
             AppSpacing.sm,
           ),
           sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1.28,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 0.84,
             ),
             delegate: SliverChildBuilderDelegate(
               (context, i) => ToolCard(tool: tools[i]),
