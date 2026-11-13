@@ -176,7 +176,8 @@ class AppTheme {
         unselectedLabelColor: AppColors.textMuted,
         dividerColor: AppColors.glassBorder,
         labelStyle: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
+        unselectedLabelStyle:
+            TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
