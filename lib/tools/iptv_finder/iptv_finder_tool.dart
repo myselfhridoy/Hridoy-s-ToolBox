@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/plugin/tool_plugin.dart';
 import '../../core/storage/github_token_store.dart';
 import '../../core/tokens.dart';
+import '../../widgets/glass_card.dart';
 import 'iptv_models.dart';
 import 'net_utils.dart';
 import 'm3u_parser.dart';
@@ -27,7 +28,8 @@ class IptvFinderTool implements ToolPlugin {
   List<String> get categories => ['Developer', 'Media'];
 
   @override
-  List<String> get tags => ['iptv', 'm3u', 'xtream', 'github', 'stream', 'scanner'];
+  List<String> get tags =>
+      ['iptv', 'm3u', 'xtream', 'github', 'stream', 'scanner'];
 
   @override
   Widget buildPage(BuildContext context) => const IptvFinderPage();
@@ -42,20 +44,30 @@ String licHex(FoundLink r) {
     orElse: () => '',
   );
   if (x.isEmpty) return '';
-  final v = x.replaceFirst(RegExp(r'^.*?license_key=', caseSensitive: false), '').trim();
-  final hexp =
-      RegExp(r'^[0-9a-f]{32}:[0-9a-f]{32}(,[0-9a-f]{32}:[0-9a-f]{32})*$', caseSensitive: false);
+  final v = x
+      .replaceFirst(RegExp(r'^.*?license_key=', caseSensitive: false), '')
+      .trim();
+  final hexp = RegExp(
+      r'^[0-9a-f]{32}:[0-9a-f]{32}(,[0-9a-f]{32}:[0-9a-f]{32})*$',
+      caseSensitive: false);
   if (RegExp(r'^https?:', caseSensitive: false).hasMatch(v)) {
-    final kid = RegExp(r'[?&]keyid=([0-9a-f]{32})', caseSensitive: false).firstMatch(v);
-    final key = RegExp(r'[?&]key=([0-9a-f]{32})', caseSensitive: false).firstMatch(v);
-    return (kid != null && key != null) ? '${kid.group(1)}:${key.group(1)}' : '';
+    final kid = RegExp(r'[?&]keyid=([0-9a-f]{32})', caseSensitive: false)
+        .firstMatch(v);
+    final key =
+        RegExp(r'[?&]key=([0-9a-f]{32})', caseSensitive: false).firstMatch(v);
+    return (kid != null && key != null)
+        ? '${kid.group(1)}:${key.group(1)}'
+        : '';
   }
   if (v.startsWith('{')) {
     try {
       final obj = jsonDecode(v);
-      if (obj is Map && obj['keys'] is List && (obj['keys'] as List).isNotEmpty) {
+      if (obj is Map &&
+          obj['keys'] is List &&
+          (obj['keys'] as List).isNotEmpty) {
         return (obj['keys'] as List)
-            .map((k) => '${b64uToHex(k['kid'].toString())}:${b64uToHex(k['k'].toString())}')
+            .map((k) =>
+                '${b64uToHex(k['kid'].toString())}:${b64uToHex(k['k'].toString())}')
             .join(',');
       }
       if (obj is Map) {
@@ -77,10 +89,12 @@ String finalUrl(FoundLink r, String player) {
   final opts = <String>[];
   if (player == 'tivimate') {
     final k = licHex(r);
-    if (k.isNotEmpty && !RegExp(r'drmLicense=', caseSensitive: false).hasMatch(u)) {
+    if (k.isNotEmpty &&
+        !RegExp(r'drmLicense=', caseSensitive: false).hasMatch(u)) {
       opts.add('drmScheme=clearkey');
       opts.add('drmLicense=$k');
-    } else if (k.isEmpty && !RegExp(r'drmLicense=', caseSensitive: false).hasMatch(u)) {
+    } else if (k.isEmpty &&
+        !RegExp(r'drmLicense=', caseSensitive: false).hasMatch(u)) {
       final lp = r.props.firstWhere(
         (p) => RegExp(r'license_key=https?:', caseSensitive: false).hasMatch(p),
         orElse: () => '',
@@ -95,13 +109,16 @@ String finalUrl(FoundLink r, String player) {
   if (player != 'vlc') {
     final h = r.headers;
     if ((h['user-agent'] ?? '').isNotEmpty) {
-      opts.add('User-Agent=${player == 'kodi' ? Uri.encodeComponent(h['user-agent']!) : h['user-agent']}');
+      opts.add(
+          'User-Agent=${player == 'kodi' ? Uri.encodeComponent(h['user-agent']!) : h['user-agent']}');
     }
     if ((h['referer'] ?? '').isNotEmpty) {
-      opts.add('Referer=${player == 'kodi' ? Uri.encodeComponent(h['referer']!) : h['referer']}');
+      opts.add(
+          'Referer=${player == 'kodi' ? Uri.encodeComponent(h['referer']!) : h['referer']}');
     }
     if ((h['origin'] ?? '').isNotEmpty) {
-      opts.add('Origin=${player == 'kodi' ? Uri.encodeComponent(h['origin']!) : h['origin']}');
+      opts.add(
+          'Origin=${player == 'kodi' ? Uri.encodeComponent(h['origin']!) : h['origin']}');
     }
     h.forEach((k, v) {
       if (k.startsWith('h_')) {
@@ -130,10 +147,17 @@ String buildM3U(List<FoundLink> items, String player, String group) {
       final t = (r.label.isNotEmpty ? r.label : r.channelName)
           .replaceAll(RegExp(r'[\r\n,]+'), ' ')
           .trim();
-      final id = r.tvgId.isNotEmpty ? ' tvg-id="${r.tvgId.replaceAll('"', "'")}"' : '';
-      final lo = r.tvgLogo.isNotEmpty ? ' tvg-logo="${r.tvgLogo.replaceAll('"', "'")}"' : '';
-      final gtRaw =
-          group.isNotEmpty ? group : (r.group.isNotEmpty ? r.group : ((r.cat ?? '').isNotEmpty ? r.cat! : name));
+      final id = r.tvgId.isNotEmpty
+          ? ' tvg-id="${r.tvgId.replaceAll('"', "'")}"'
+          : '';
+      final lo = r.tvgLogo.isNotEmpty
+          ? ' tvg-logo="${r.tvgLogo.replaceAll('"', "'")}"'
+          : '';
+      final gtRaw = group.isNotEmpty
+          ? group
+          : (r.group.isNotEmpty
+              ? r.group
+              : ((r.cat ?? '').isNotEmpty ? r.cat! : name));
       final gt = gtRaw.replaceAll('"', "'");
       b.writeln('#EXTINF:-1$id$lo group-title="$gt",$t');
       if (player == 'kodi') {
@@ -143,9 +167,15 @@ String buildM3U(List<FoundLink> items, String player, String group) {
       }
       if (player == 'vlc') {
         final h = r.headers;
-        if ((h['user-agent'] ?? '').isNotEmpty) b.writeln('#EXTVLCOPT:http-user-agent=${h['user-agent']}');
-        if ((h['referer'] ?? '').isNotEmpty) b.writeln('#EXTVLCOPT:http-referrer=${h['referer']}');
-        if ((h['origin'] ?? '').isNotEmpty) b.writeln('#EXTVLCOPT:http-origin=${h['origin']}');
+        if ((h['user-agent'] ?? '').isNotEmpty) {
+          b.writeln('#EXTVLCOPT:http-user-agent=${h['user-agent']}');
+        }
+        if ((h['referer'] ?? '').isNotEmpty) {
+          b.writeln('#EXTVLCOPT:http-referrer=${h['referer']}');
+        }
+        if ((h['origin'] ?? '').isNotEmpty) {
+          b.writeln('#EXTVLCOPT:http-origin=${h['origin']}');
+        }
       }
       b.writeln(finalUrl(r, player));
     }
@@ -157,23 +187,27 @@ String buildM3U(List<FoundLink> items, String player, String group) {
 
 String _normalizeExtra(String u) {
   u = ghRawUrl(u);
-  final glM = RegExp(r'^https://gitlab\.com/(.+?)/-/blob/', caseSensitive: false).firstMatch(u);
+  final glM = RegExp(r'^https://gitlab\.com/(.+?)/-/blob/', caseSensitive: false)
+      .firstMatch(u);
   if (glM != null) {
-    u = u.replaceFirst(glM.group(0)!, 'https://gitlab.com/${glM.group(1)}/-/raw/');
+    u = u.replaceFirst(
+        glM.group(0)!, 'https://gitlab.com/${glM.group(1)}/-/raw/');
   }
-  final gistM =
-      RegExp(r'^https://gist\.github\.com/([^/\s]+)/([0-9a-f]+)/?$', caseSensitive: false).firstMatch(u);
+  final gistM = RegExp(
+          r'^https://gist\.github\.com/([^/\s]+)/([0-9a-f]+)/?$',
+          caseSensitive: false)
+      .firstMatch(u);
   if (gistM != null) {
     return 'https://gist.githubusercontent.com/${gistM.group(1)}/${gistM.group(2)}/raw';
   }
-  final pbM =
-      RegExp(r'^https://pastebin\.com/(?!archive|trends|tools|login|signup|faq)([A-Za-z0-9]{6,10})/?$')
-          .firstMatch(u);
+  final pbM = RegExp(
+          r'^https://pastebin\.com/(?!archive|trends|tools|login|signup|faq)([A-Za-z0-9]{6,10})/?$')
+      .firstMatch(u);
   if (pbM != null) return 'https://pastebin.com/raw/${pbM.group(1)}';
   return u;
 }
 
-Future<Map<String, String>> _gistUserFiles(
+Future> _gistUserFiles(
   String user,
   String token,
   void Function(String) log,
@@ -183,8 +217,10 @@ Future<Map<String, String>> _gistUserFiles(
     final headers = <String, String>{
       if (token.isNotEmpty) 'h_authorization': 'Bearer $token',
     };
-    final url = 'https://api.github.com/users/${Uri.encodeComponent(user)}/gists?per_page=100&page=$pg';
-    final r = await fetchFollow(url, headers, timeout: const Duration(seconds: 15), maxBytes: 3000000);
+    final url =
+        'https://api.github.com/users/${Uri.encodeComponent(user)}/gists?per_page=100&page=$pg';
+    final r = await fetchFollow(url, headers,
+        timeout: const Duration(seconds: 15), maxBytes: 3000000);
     if (r.code != 200) {
       log('gist:$user HTTP ${r.code}');
       break;
@@ -200,7 +236,8 @@ Future<Map<String, String>> _gistUserFiles(
       final filesMap = g['files'] as Map?;
       if (filesMap == null) continue;
       filesMap.forEach((fn, f) {
-        if (RegExp(r'\.(m3u8?|txt)$', caseSensitive: false).hasMatch(fn.toString()) &&
+        if (RegExp(r'\.(m3u8?|txt)$', caseSensitive: false)
+                .hasMatch(fn.toString()) &&
             f['raw_url'] != null) {
           out[f['raw_url'].toString()] = 'gist:$user/$fn';
         }
@@ -337,7 +374,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
   void _done(int found, int files, {String mode = 'channel'}) {
     _finished = true;
     _foundCount = found;
-    _log('শেষ — $found লিংক${files > 0 ? ' ($files ফাইল স্ক্যান করা হয়েছে)' : ''}');
+    _log(
+        'শেষ — $found লিংক${files > 0 ? ' ($files ফাইল স্ক্যান করা হয়েছে)' : ''}');
     setState(() => _busy = false);
   }
 
@@ -418,7 +456,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     final token = GitHubTokenStore.instance.token ?? '';
     final extra = _extraC.text.trim();
     if (token.isEmpty && extra.isEmpty) {
-      _fail('GitHub টোকেন সেট করুন (উপরে 🔒 আইকন) অথবা অন্তত একটা extra source দিন');
+      _fail(
+          'GitHub টোকেন সেট করুন (উপরে 🔒 আইকন) অথবা অন্তত একটা extra source দিন');
       return;
     }
     final chs = parseChannelsInput(_channelsC.text);
@@ -460,7 +499,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
         if (d == null || d.items.isEmpty) break;
         for (final it in d.items) {
           final raw = ghRawUrl(it.htmlUrl);
-          if (raw.contains('raw.githubusercontent.com') && !files.containsKey(raw)) {
+          if (raw.contains('raw.githubusercontent.com') &&
+              !files.containsKey(raw)) {
             files[raw] = '${it.repoFullName}/${it.path}';
           }
         }
@@ -474,7 +514,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     for (var eu in extra.split(RegExp(r'\r\n|\r|\n'))) {
       eu = eu.trim();
       if (eu.isEmpty) continue;
-      final gm = RegExp(r'^gist:([A-Za-z0-9-]+)$', caseSensitive: false).firstMatch(eu);
+      final gm =
+          RegExp(r'^gist:([A-Za-z0-9-]+)$', caseSensitive: false).firstMatch(eu);
       if (gm != null) {
         final g = await _gistUserFiles(gm.group(1)!, token, _log);
         for (final entry in g.entries) {
@@ -511,7 +552,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
         final body = bodies[u];
         if (body == null) continue;
         for (final m in parsePlaylist(body, files[u] ?? u, chs: chs)) {
-          final k = '${m.chIndex}|${m.url}|${m.props.join(';')}|${m.headers['h_cookie'] ?? ''}';
+          final k =
+              '${m.chIndex}|${m.url}|${m.props.join(';')}|${m.headers['h_cookie'] ?? ''}';
           if (seen.contains(k)) continue;
           seen.add(k);
           if (_validate) {
@@ -544,8 +586,10 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
       found = okc;
       _log('Validation: $okc ok, ${chk - okc} failed of $chk');
       if (why.isNotEmpty) {
-        final sortedWhy = why.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-        final pp = sortedWhy.take(8).map((e) => '${e.key} x${e.value}').join(', ');
+        final sortedWhy = why.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        final pp =
+            sortedWhy.take(8).map((e) => '${e.key} x${e.value}').join(', ');
         _log('Failed: $pp');
       }
     }
@@ -562,8 +606,11 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     final verifyAll = _verifyAllHosts;
     final useGh = _useGhDomainSearch && token.isNotEmpty;
 
-    final hosts =
-        hostsIn.split(RegExp(r'\r\n|\r|\n')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final hosts = hostsIn
+        .split(RegExp(r'\r\n|\r|\n'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
     if (hosts.isEmpty) {
       _fail('অন্তত একটা host বা URL দিন');
       return;
@@ -596,8 +643,10 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
       if (userOv.isNotEmpty && passOv.isNotEmpty) {
         try {
           final p = Uri.parse(hUrl);
-          final b = '${p.scheme.isEmpty ? 'http' : p.scheme}://${p.host}${p.hasPort ? ':${p.port}' : ''}';
-          creds = XtreamCreds(base: b, user: userOv, pass: passOv, kind: 'manual');
+          final b =
+              '${p.scheme.isEmpty ? 'http' : p.scheme}://${p.host}${p.hasPort ? ':${p.port}' : ''}';
+          creds = XtreamCreds(
+              base: b, user: userOv, pass: passOv, kind: 'manual');
         } catch (_) {}
       }
 
@@ -605,11 +654,13 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
 
       if (creds != null) {
         _log('Xtream creds detected for $baseHost (${creds.kind})');
-        final enumRes = await xtreamEnumerate(creds.base, creds.user, creds.pass, const {}, _log);
+        final enumRes = await xtreamEnumerate(
+            creds.base, creds.user, creds.pass, const {}, _log);
         if (enumRes.ok) {
           _log(
               'Xtream: ${enumRes.channels.length} channels via ${enumRes.method} (pattern: ${enumRes.pattern ?? 'n/a'})');
-          final acc = enumRes.info?['user_info']?['username']?.toString() ?? '';
+          final acc =
+              enumRes.info?['user_info']?['username']?.toString() ?? '';
           for (final c in enumRes.channels) {
             c.src = 'xtream:$baseHost${acc.isNotEmpty ? ' ($acc)' : ''}';
             c.xtream = true;
@@ -663,20 +714,23 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
             for (final u in chunk) {
               final body = bodies[u];
               if (body == null) continue;
-              final parsed = parsePlaylist(body, 'gh-host:$u', hostFilter: baseHost);
+              final parsed =
+                  parsePlaylist(body, 'gh-host:$u', hostFilter: baseHost);
               for (final m in parsed) {
                 emitRes(m);
                 hostFound++;
                 final cc = xtreamCredsFromUrl(m.url);
                 if (cc != null) {
-                  foundXtream.putIfAbsent('${cc.base}|${cc.user}|${cc.pass}', () => cc);
+                  foundXtream.putIfAbsent(
+                      '${cc.base}|${cc.user}|${cc.pass}', () => cc);
                 }
               }
             }
           }
           for (final cc in foundXtream.values) {
             _log('Discovered Xtream: ${cc.base} -> enumerating');
-            final enumRes = await xtreamEnumerate(cc.base, cc.user, cc.pass, const {}, _log);
+            final enumRes = await xtreamEnumerate(
+                cc.base, cc.user, cc.pass, const {}, _log);
             if (enumRes.ok) {
               for (final c in enumRes.channels) {
                 c.src = 'xtream-enum:${extractHost(cc.base)}';
@@ -697,11 +751,13 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
         try {
           final p = Uri.parse(hUrl);
           if (p.host.isNotEmpty) {
-            final b = '${p.scheme.isEmpty ? 'http' : p.scheme}://${p.host}${p.hasPort ? ':${p.port}' : ''}';
+            final b =
+                '${p.scheme.isEmpty ? 'http' : p.scheme}://${p.host}${p.hasPort ? ':${p.port}' : ''}';
             _log('Probing common paths on $b...');
             final hits = await hostCommonProbes(b, const {});
             hits.forEach((hu, body) {
-              final parsed = parsePlaylist(body, 'probe:$hu', hostFilter: baseHost);
+              final parsed =
+                  parsePlaylist(body, 'probe:$hu', hostFilter: baseHost);
               for (final m in parsed) {
                 emitRes(m);
                 hostFound++;
@@ -731,7 +787,9 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
           }
           _scheduleRebuild();
         }, concurrency: 20);
-        _progress('Verifying (${ci + 1}/${chunks.length})', ci + 1, chunks.length, found: totalOk);
+        _progress('Verifying (${ci + 1}/${chunks.length})', ci + 1,
+            chunks.length,
+            found: totalOk);
       }
       _log('Verification finished. Found $totalOk working links.');
     }
@@ -752,8 +810,12 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
         title: const Text('যাচাই করবেন?'),
         content: Text('${items.length}টি লিংক যাচাই করতে সময় লাগতে পারে।'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('বাতিল')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('যাচাই করুন')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('বাতিল')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('যাচাই করুন')),
         ],
       ),
     );
@@ -771,7 +833,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
       _mode = 'ht';
       _hostsC.text = host;
     });
-    _scrollC.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    _scrollC.animateTo(0,
+        duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
   }
 
   // ───────────── filtering/selection ─────────────
@@ -786,7 +849,9 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
 
   List<FoundLink> get _visibleResults {
     final list = _results.where((r) {
-      if (_filterChannel.isNotEmpty && r.channelName != _filterChannel) return false;
+      if (_filterChannel.isNotEmpty && r.channelName != _filterChannel) {
+        return false;
+      }
       if (_filterHost.isNotEmpty && r.host != _filterHost) return false;
       if (_onlyOk && r.ok != true) return false;
       if (_hideDirect && r.note == 'direct') return false;
@@ -804,7 +869,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     return list;
   }
 
-  List<String> get _channelOptions => _results.map((r) => r.channelName).toSet().toList()..sort();
+  List<String> get _channelOptions =>
+      _results.map((r) => r.channelName).toSet().toList()..sort();
 
   List<({String host, int ok, int total})> get _hostStats {
     final by = <String, ({int ok, int total})>{};
@@ -813,15 +879,18 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
       final cur = by[r.host] ?? (ok: 0, total: 0);
       by[r.host] = (ok: cur.ok + (r.ok == true ? 1 : 0), total: cur.total + 1);
     }
-    final list = by.entries.map((e) => (host: e.key, ok: e.value.ok, total: e.value.total)).toList();
+    final list = by.entries
+        .map((e) => (host: e.key, ok: e.value.ok, total: e.value.total))
+        .toList();
     list.sort((a, b) => b.ok != a.ok ? b.ok - a.ok : b.total - a.total);
     return list;
   }
 
-  // ───────────── token dialog (GitHubTokenStore রিইউজ করে, gittomd-র সাথে শেয়ার্ড) ─────────────
+  // ───────────── token dialog ─────────────
 
   Future<void> _openTokenDialog() async {
-    final controller = TextEditingController(text: GitHubTokenStore.instance.token ?? '');
+    final controller =
+        TextEditingController(text: GitHubTokenStore.instance.token ?? '');
     var obscure = true;
     await showDialog<void>(
       context: context,
@@ -835,7 +904,10 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
               Text(
                 'GitHub Code Search-এর জন্য একটা Personal Access Token লাগবে।\n'
                 'gittomd টুলের সাথে এই টোকেন শেয়ার করা হয়।',
-                style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                style: Theme.of(ctx)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: AppColors.textSecondary),
               ),
               const SizedBox(height: AppSpacing.md),
               TextField(
@@ -846,7 +918,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                   hintText: 'ghp_… or github_pat_…',
                   suffixIcon: IconButton(
                     tooltip: obscure ? 'Show token' : 'Hide token',
-                    icon: Icon(obscure ? Icons.visibility : Icons.visibility_off),
+                    icon: Icon(
+                        obscure ? Icons.visibility : Icons.visibility_off),
                     onPressed: () => setDialogState(() => obscure = !obscure),
                   ),
                 ),
@@ -862,7 +935,9 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
               },
               child: const Text('Clear'),
             ),
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
                 await GitHubTokenStore.instance.save(controller.text);
@@ -892,43 +967,55 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
         titleSpacing: 0,
         actions: [
           IconButton(
-            icon: Icon(hasToken ? Icons.lock : Icons.lock_open,
-                color: hasToken ? AppColors.success : null),
+            icon: Icon(
+              hasToken ? Icons.lock_rounded : Icons.lock_open_rounded,
+              color: hasToken ? AppColors.success : null,
+            ),
             tooltip: hasToken ? 'Token সেট আছে' : 'GitHub token সেট করুন',
             onPressed: _openTokenDialog,
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          CustomScrollView(
-            controller: _scrollC,
-            slivers: [
-              SliverToBoxAdapter(child: _buildForm(t)),
-              SliverToBoxAdapter(child: _buildProgressPanel(t)),
-              if (_results.isNotEmpty) SliverToBoxAdapter(child: _buildToolsPanel(t)),
-              if (_results.isNotEmpty) _buildResultsSliver(t),
-              const SliverToBoxAdapter(child: SizedBox(height: 120)),
-            ],
-          ),
-          if (_toastMsg != null)
-            Positioned(
-              left: 24,
-              right: 24,
-              bottom: 100,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.textPrimary,
-                    borderRadius: BorderRadius.circular(999),
+      body: AmbientBackdrop(
+        child: Stack(
+          children: [
+            CustomScrollView(
+              controller: _scrollC,
+              slivers: [
+                SliverToBoxAdapter(child: _buildForm(t)),
+                SliverToBoxAdapter(child: _buildProgressPanel(t)),
+                if (_results.isNotEmpty)
+                  SliverToBoxAdapter(child: _buildToolsPanel(t)),
+                if (_results.isNotEmpty) _buildResultsSliver(t),
+                const SliverToBoxAdapter(child: SizedBox(height: 120)),
+              ],
+            ),
+            if (_toastMsg != null)
+              Positioned(
+                left: 24,
+                right: 24,
+                bottom: 100,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceElevated,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: AppColors.primary),
+                    ),
+                    child: Text(
+                      _toastMsg!,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                  child: Text(_toastMsg!,
-                      style: const TextStyle(color: AppColors.bg, fontWeight: FontWeight.w600)),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
       bottomNavigationBar: _results.isNotEmpty ? _buildDock(t) : null,
     );
@@ -936,61 +1023,90 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
 
   Widget _buildForm(TextTheme t) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: double.infinity,
-            child: SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'ch', label: Text('By Channel'), icon: Icon(Icons.tv, size: 18)),
-                ButtonSegment(value: 'ht', label: Text('By Host'), icon: Icon(Icons.dns, size: 18)),
-              ],
-              selected: {_mode},
-              onSelectionChanged: (s) => setState(() => _mode = s.first),
-              showSelectedIcon: false,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          if (_mode == 'ch') _buildChannelForm(t) else _buildHostForm(t),
-          const SizedBox(height: AppSpacing.md),
-          Text('Player format', style: t.labelSmall?.copyWith(color: AppColors.textMuted)),
-          const SizedBox(height: AppSpacing.xs),
-          DropdownButtonFormField<String>(
-            value: _player,
-            isExpanded: true,
-            items: const [
-              DropdownMenuItem(value: 'tivimate', child: Text('TiviMate / OTT')),
-              DropdownMenuItem(value: 'kodi', child: Text('Kodi')),
-              DropdownMenuItem(value: 'vlc', child: Text('VLC')),
-            ],
-            onChanged: (v) => setState(() => _player = v ?? _player),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.lg,
+        0,
+      ),
+      child: GlassCard(
+        radius: AppRadius.lg,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _busy ? null : _start,
-                  icon: _busy
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.play_arrow),
-                  label: Text(_busy ? 'চলছে…' : 'Start scan'),
+              SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 'ch',
+                      label: Text('By Channel'),
+                      icon: Icon(Icons.tv_rounded, size: 18),
+                    ),
+                    ButtonSegment(
+                      value: 'ht',
+                      label: Text('By Host'),
+                      icon: Icon(Icons.dns_rounded, size: 18),
+                    ),
+                  ],
+                  selected: {_mode},
+                  onSelectionChanged: (s) => setState(() => _mode = s.first),
+                  showSelectedIcon: false,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              OutlinedButton(
-                onPressed: _busy ? _stop : null,
-                style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
-                child: const Text('Stop'),
+              const SizedBox(height: AppSpacing.md),
+              if (_mode == 'ch') _buildChannelForm(t) else _buildHostForm(t),
+              const SizedBox(height: AppSpacing.md),
+              Text('Player format',
+                  style: t.labelSmall?.copyWith(color: AppColors.textMuted)),
+              const SizedBox(height: AppSpacing.xs),
+              DropdownButtonFormField<String>(
+                value: _player,
+                isExpanded: true,
+                items: const [
+                  DropdownMenuItem(
+                      value: 'tivimate', child: Text('TiviMate / OTT')),
+                  DropdownMenuItem(value: 'kodi', child: Text('Kodi')),
+                  DropdownMenuItem(value: 'vlc', child: Text('VLC')),
+                ],
+                onChanged: (v) => setState(() => _player = v ?? _player),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _busy ? null : _start,
+                      icon: _busy
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.play_arrow_rounded),
+                      label: Text(_busy ? 'চলছে…' : 'Start scan'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  OutlinedButton(
+                    onPressed: _busy ? _stop : null,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.error,
+                      side: BorderSide(
+                        color: _busy
+                            ? AppColors.error.withValues(alpha: 0.5)
+                            : AppColors.glassBorder,
+                      ),
+                    ),
+                    child: const Text('Stop'),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1006,7 +1122,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
           controller: _channelsC,
           maxLines: 4,
           decoration: const InputDecoration(
-            hintText: 'Sky Sports Cricket | SkySportsCricket\nStar Sports 1\nT Sports',
+            hintText:
+                'Sky Sports Cricket | SkySportsCricket\nStar Sports 1\nT Sports',
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -1024,14 +1141,18 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                 hintText: 'https://example.com/playlist.m3u\ngist:username',
               ),
             ),
+            const SizedBox(height: AppSpacing.xs),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
-        Text('GitHub search pages', style: t.labelSmall?.copyWith(color: AppColors.textMuted)),
+        Text('GitHub search pages',
+            style: t.labelSmall?.copyWith(color: AppColors.textMuted)),
         const SizedBox(height: AppSpacing.xs),
         DropdownButtonFormField<int>(
           value: _pages,
-          items: const [1, 3, 5, 10].map((p) => DropdownMenuItem(value: p, child: Text('$p'))).toList(),
+          items: const [1, 3, 5, 10]
+              .map((p) => DropdownMenuItem(value: p, child: Text('$p')))
+              .toList(),
           onChanged: (v) => setState(() => _pages = v ?? _pages),
         ),
         SwitchListTile(
@@ -1063,12 +1184,14 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
           controller: _hostsC,
           maxLines: 4,
           decoration: const InputDecoration(
-            hintText: 'http://iptv.example.com:8080/live/user1/pass1/12345.m3u8\n'
+            hintText:
+                'http://iptv.example.com:8080/live/user1/pass1/12345.m3u8\n'
                 'another-server.com',
           ),
         ),
         const SizedBox(height: AppSpacing.xs),
-        Text('যেকোনো কাজ করা Xtream স্ট্রিম URL পেস্ট করলেই credential বের করে সব চ্যানেল এনুমারেট হবে।',
+        Text(
+            'যেকোনো কাজ করা Xtream স্ট্রিম URL পেস্ট করলেই credential বের করে সব চ্যানেল এনুমারেট হবে।',
             style: t.labelSmall?.copyWith(color: AppColors.textMuted)),
         const SizedBox(height: AppSpacing.sm),
         Row(
@@ -1076,14 +1199,16 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
             Expanded(
               child: TextField(
                 controller: _xUserC,
-                decoration: const InputDecoration(hintText: 'username (optional)'),
+                decoration:
+                    const InputDecoration(hintText: 'username (optional)'),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: TextField(
                 controller: _xPassC,
-                decoration: const InputDecoration(hintText: 'password (optional)'),
+                decoration:
+                    const InputDecoration(hintText: 'password (optional)'),
               ),
             ),
           ],
@@ -1107,56 +1232,91 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
   }
 
   Widget _buildProgressPanel(TextTheme t) {
-    final pct = _progB > 0 ? (_progA / _progB * 100).clamp(0, 100).round() : 0;
+    final pct =
+        _progB > 0 ? (_progA / _progB * 100).clamp(0, 100).round() : 0;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.glassBorder),
-          borderRadius: BorderRadius.circular(AppRadius.md),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '$_stage${_progB > 0 ? ' · $_progA/$_progB' : ''}${_foundCount > 0 ? ' · found $_foundCount' : ''}',
-                    style: t.bodyMedium,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Text('$pct%', style: t.bodyMedium?.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700)),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: _progB > 0 ? _progA / _progB : (_busy ? null : 0.0),
-                minHeight: 6,
-                backgroundColor: AppColors.fieldFill,
-              ),
-            ),
-            if (_logLines.isNotEmpty)
-              ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                title: Text('Log দেখুন', style: t.labelSmall?.copyWith(color: AppColors.textMuted)),
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
+      child: GlassCard(
+        radius: AppRadius.md,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 160),
-                    child: SingleChildScrollView(
-                      child: Text(
-                        _logLines.join('\n'),
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: AppColors.textMuted),
-                      ),
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _busy
+                          ? AppColors.primary
+                          : (_foundCount > 0
+                              ? AppColors.success
+                              : AppColors.textMuted),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '$_stage${_progB > 0 ? ' · $_progA/$_progB' : ''}${_foundCount > 0 ? ' · found $_foundCount' : ''}',
+                      style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    '$pct%',
+                    style: t.bodyMedium?.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
-          ],
+              const SizedBox(height: AppSpacing.sm),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: _progB > 0 ? _progA / _progB : (_busy ? null : 0.0),
+                  minHeight: 6,
+                  backgroundColor: AppColors.fieldFill,
+                ),
+              ),
+              if (_logLines.isNotEmpty)
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: Text('Log দেখুন',
+                      style:
+                          t.labelSmall?.copyWith(color: AppColors.textMuted)),
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: AppColors.navBg,
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        border: Border.all(color: AppColors.glassBorder),
+                      ),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 160),
+                        child: SingleChildScrollView(
+                          child: Text(
+                            _logLines.join('\n'),
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -1166,130 +1326,165 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     final channelOpts = _channelOptions;
     final hostOpts = _hostStats;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _filterChannel.isEmpty ? null : _filterChannel,
-                  isExpanded: true,
-                  decoration: const InputDecoration(isDense: true),
-                  hint: const Text('All channels'),
-                  items: channelOpts
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _filterChannel = v ?? ''),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _filterHost.isEmpty ? null : _filterHost,
-                  isExpanded: true,
-                  decoration: const InputDecoration(isDense: true),
-                  hint: const Text('All hosts'),
-                  items: hostOpts
-                      .map((h) => DropdownMenuItem(
-                          value: h.host, child: Text('${h.host} (${h.ok}/${h.total})', overflow: TextOverflow.ellipsis)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _filterHost = v ?? ''),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: AppSpacing.sm,
-            children: [
-              FilterChip(
-                label: const Text('✓ Verified only'),
-                selected: _onlyOk,
-                onSelected: (v) => setState(() => _onlyOk = v),
-              ),
-              FilterChip(
-                label: const Text('Hide direct'),
-                selected: _hideDirect,
-                onSelected: (v) => setState(() => _hideDirect = v),
-              ),
-              FilterChip(
-                label: const Text('Hide Xtream'),
-                selected: _hideXtream,
-                onSelected: (v) => setState(() => _hideXtream = v),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            title: Text('Selection, verify ও group', style: t.titleMedium),
-            children: [
-              Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
+          GlassCard(
+            radius: AppRadius.md,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  OutlinedButton(
-                    onPressed: () => setState(() {
-                      for (final r in _visibleResults) _selected.add(r.i);
-                    }),
-                    child: const Text('Select shown'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value:
+                              _filterChannel.isEmpty ? null : _filterChannel,
+                          isExpanded: true,
+                          decoration: const InputDecoration(isDense: true),
+                          hint: const Text('All channels'),
+                          items: channelOpts
+                              .map((c) => DropdownMenuItem(
+                                  value: c,
+                                  child: Text(c,
+                                      overflow: TextOverflow.ellipsis)))
+                              .toList(),
+                          onChanged: (v) =>
+                              setState(() => _filterChannel = v ?? ''),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _filterHost.isEmpty ? null : _filterHost,
+                          isExpanded: true,
+                          decoration: const InputDecoration(isDense: true),
+                          hint: const Text('All hosts'),
+                          items: hostOpts
+                              .map((h) => DropdownMenuItem(
+                                  value: h.host,
+                                  child: Text(
+                                      '${h.host} (${h.ok}/${h.total})',
+                                      overflow: TextOverflow.ellipsis)))
+                              .toList(),
+                          onChanged: (v) =>
+                              setState(() => _filterHost = v ?? ''),
+                        ),
+                      ),
+                    ],
                   ),
-                  OutlinedButton(
-                    onPressed: () => setState(() {
-                      for (final r in _visibleResults) {
-                        if (r.ok == true) _selected.add(r.i);
-                      }
-                    }),
-                    child: const Text('Select verified'),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: 4,
+                    children: [
+                      FilterChip(
+                        label: const Text('✓ Verified only'),
+                        selected: _onlyOk,
+                        onSelected: (v) => setState(() => _onlyOk = v),
+                      ),
+                      FilterChip(
+                        label: const Text('Hide direct'),
+                        selected: _hideDirect,
+                        onSelected: (v) => setState(() => _hideDirect = v),
+                      ),
+                      FilterChip(
+                        label: const Text('Hide Xtream'),
+                        selected: _hideXtream,
+                        onSelected: (v) => setState(() => _hideXtream = v),
+                      ),
+                    ],
                   ),
-                  OutlinedButton(
-                    onPressed: () => setState(_selected.clear),
-                    child: const Text('Clear selection'),
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title:
+                        Text('Selection, verify ও group', style: t.titleMedium),
+                    children: [
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        children: [
+                          OutlinedButton(
+                            onPressed: () => setState(() {
+                              for (final r in _visibleResults) {
+                                _selected.add(r.i);
+                              }
+                            }),
+                            child: const Text('Select shown'),
+                          ),
+                          OutlinedButton(
+                            onPressed: () => setState(() {
+                              for (final r in _visibleResults) {
+                                if (r.ok == true) _selected.add(r.i);
+                              }
+                            }),
+                            child: const Text('Select verified'),
+                          ),
+                          OutlinedButton(
+                            onPressed: () => setState(_selected.clear),
+                            child: const Text('Clear selection'),
+                          ),
+                          OutlinedButton(
+                            onPressed: _busy ? null : _verifyUnverified,
+                            style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.error),
+                            child: const Text('Verify unverified'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      TextField(
+                        controller: _groupC,
+                        decoration: const InputDecoration(
+                            labelText:
+                                'M3U group-title (ফাঁকা = সোর্সের group)'),
+                      ),
+                    ],
                   ),
-                  OutlinedButton(
-                    onPressed: _busy ? null : _verifyUnverified,
-                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
-                    child: const Text('Verify unverified'),
-                  ),
+                  if (hostOpts.length > 1) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Text('Hosts',
+                        style: t.labelSmall
+                            ?.copyWith(color: AppColors.textMuted)),
+                    const SizedBox(height: AppSpacing.xs),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 220),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: hostOpts.length > 50 ? 50 : hostOpts.length,
+                        itemBuilder: (_, i) {
+                          final hst = hostOpts[i];
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                            title: Text(hst.host,
+                                style: const TextStyle(
+                                    fontFamily: 'monospace', fontSize: 12)),
+                            trailing: Wrap(
+                              spacing: 6,
+                              children: [
+                                Chip(
+                                    label: Text('${hst.ok}/${hst.total}'),
+                                    visualDensity: VisualDensity.compact),
+                                TextButton(
+                                    onPressed: () => _exploreHost(hst.host),
+                                    child: const Text('Explore')),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ],
               ),
-              const SizedBox(height: AppSpacing.sm),
-              TextField(
-                controller: _groupC,
-                decoration: const InputDecoration(labelText: 'M3U group-title (ফাঁকা = সোর্সের group)'),
-              ),
-            ],
-          ),
-          if (hostOpts.length > 1) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Text('Hosts', style: t.labelSmall?.copyWith(color: AppColors.textMuted)),
-            const SizedBox(height: AppSpacing.xs),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 220),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: hostOpts.length > 50 ? 50 : hostOpts.length,
-                itemBuilder: (_, i) {
-                  final hst = hostOpts[i];
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    title: Text(hst.host, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
-                    trailing: Wrap(
-                      spacing: 6,
-                      children: [
-                        Chip(label: Text('${hst.ok}/${hst.total}'), visualDensity: VisualDensity.compact),
-                        TextButton(onPressed: () => _exploreHost(hst.host), child: const Text('Explore')),
-                      ],
-                    ),
-                  );
-                },
-              ),
             ),
-          ],
-          const Divider(height: AppSpacing.xxl),
+          ),
+          const SizedBox(height: AppSpacing.md),
         ],
       ),
     );
@@ -1310,7 +1505,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
             return Center(
               child: TextButton(
                 onPressed: () => setState(() => _showLimit += 100),
-                child: Text('আরও ${(visible.length - _showLimit).clamp(0, 100)} দেখান'),
+                child: Text(
+                    'আরও ${(visible.length - _showLimit).clamp(0, 100)} দেখান'),
               ),
             );
           }
@@ -1329,89 +1525,105 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     final lic = licHex(r);
     final url = finalUrl(r, _player);
 
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.glassBorder),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        gradient: LinearGradient(
-          colors: [color.withValues(alpha: 0.06), Colors.transparent],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
+    return GlassCard(
+      radius: AppRadius.md,
+      borderColor: r.ok == true
+          ? AppColors.success.withValues(alpha: 0.35)
+          : AppColors.glassBorder,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [color.withValues(alpha: 0.07), Colors.transparent],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
         ),
-      ),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Checkbox(
-            value: _selected.contains(r.i),
-            onChanged: (v) => setState(() {
-              if (v == true) {
-                _selected.add(r.i);
-              } else {
-                _selected.remove(r.i);
-              }
-            }),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(r.channelName, style: t.titleMedium),
-                const SizedBox(height: AppSpacing.xs),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    _badge(
-                      r.ok == true ? '✓ verified' : (r.ok == false ? '✕ failed' : '• unchecked'),
-                      color: color,
-                    ),
-                    if (r.h > 0) _badge('${r.h}p'),
-                    if (r.ms != null) _badge('${r.ms}ms'),
-                    if (r.note.isNotEmpty) _badge(r.note),
-                    if (r.isXtream) _badge('xtream', color: AppColors.secondary),
-                    if (r.isPortal) _badge('portal', color: AppColors.secondary),
-                    if (lic.isNotEmpty) _badge('🔑 key', color: AppColors.success),
-                    if (r.group.isNotEmpty) _badge(r.group),
-                    if (r.host.isNotEmpty) _badge(r.host, color: AppColors.primary),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(r.src,
-                    style: t.labelSmall?.copyWith(color: AppColors.textMuted), maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: AppSpacing.xs),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: AppColors.fieldFill,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                  ),
-                  child: Text(url,
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 11), maxLines: 3, overflow: TextOverflow.ellipsis),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => _copy(url, 'link'),
-                      icon: const Icon(Icons.copy, size: 16),
-                      label: const Text('Copy'),
-                    ),
-                    if (r.host.isNotEmpty)
-                      TextButton.icon(
-                        onPressed: () => _exploreHost(r.host),
-                        icon: const Icon(Icons.explore_outlined, size: 16),
-                        label: const Text('Explore host'),
-                      ),
-                  ],
-                ),
-              ],
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Checkbox(
+              value: _selected.contains(r.i),
+              onChanged: (v) => setState(() {
+                if (v == true) {
+                  _selected.add(r.i);
+                } else {
+                  _selected.remove(r.i);
+                }
+              }),
             ),
-          ),
-        ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(r.channelName, style: t.titleMedium),
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _badge(
+                        r.ok == true
+                            ? '✓ verified'
+                            : (r.ok == false ? '✕ failed' : '• unchecked'),
+                        color: color,
+                      ),
+                      if (r.h > 0) _badge('${r.h}p'),
+                      if (r.ms != null) _badge('${r.ms}ms'),
+                      if (r.note.isNotEmpty) _badge(r.note),
+                      if (r.isXtream)
+                        _badge('xtream', color: AppColors.secondary),
+                      if (r.isPortal)
+                        _badge('portal', color: AppColors.secondary),
+                      if (lic.isNotEmpty)
+                        _badge('🔑 key', color: AppColors.success),
+                      if (r.group.isNotEmpty) _badge(r.group),
+                      if (r.host.isNotEmpty)
+                        _badge(r.host, color: AppColors.primary),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(r.src,
+                      style: t.labelSmall?.copyWith(color: AppColors.textMuted),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: AppSpacing.xs),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.sm),
+                    decoration: BoxDecoration(
+                      color: AppColors.navBg,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      border: Border.all(color: AppColors.glassBorder),
+                    ),
+                    child: Text(url,
+                        style: const TextStyle(
+                            fontFamily: 'monospace', fontSize: 11),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _copy(url, 'link'),
+                        icon: const Icon(Icons.copy_rounded, size: 16),
+                        label: const Text('Copy'),
+                      ),
+                      if (r.host.isNotEmpty)
+                        TextButton.icon(
+                          onPressed: () => _exploreHost(r.host),
+                          icon: const Icon(Icons.explore_outlined, size: 16),
+                          label: const Text('Explore host'),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1420,8 +1632,12 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     final c = color ?? AppColors.textSecondary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: c.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(999)),
-      child: Text(text, style: TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w600)),
+      decoration: BoxDecoration(
+          color: c.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(999)),
+      child: Text(text,
+          style:
+              TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w600)),
     );
   }
 
@@ -1429,8 +1645,9 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     final count = _visibleResults.length;
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.sm),
-        decoration: BoxDecoration(
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.sm),
+        decoration: const BoxDecoration(
           color: AppColors.navBg,
           border: Border(top: BorderSide(color: AppColors.glassBorder)),
         ),
@@ -1440,8 +1657,12 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('$count links', style: t.bodySmall?.copyWith(color: AppColors.textMuted)),
-                Text(_selected.isNotEmpty ? '${_selected.length} selected' : 'all shown',
+                Text('$count links',
+                    style: t.bodySmall?.copyWith(color: AppColors.textMuted)),
+                Text(
+                    _selected.isNotEmpty
+                        ? '${_selected.length} selected'
+                        : 'all shown',
                     style: t.bodySmall?.copyWith(color: AppColors.textMuted)),
               ],
             ),
@@ -1454,7 +1675,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                     onPressed: () {
                       final items = _pickItems;
                       if (items.isEmpty) return;
-                      _copy(buildM3U(items, _player, _groupC.text.trim()), '${items.length} channels (M3U)');
+                      _copy(buildM3U(items, _player, _groupC.text.trim()),
+                          '${items.length} channels (M3U)');
                     },
                     child: const Text('Copy M3U'),
                   ),
@@ -1465,7 +1687,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                     onPressed: () {
                       final items = _pickItems;
                       if (items.isEmpty) return;
-                      _copy(items.map((r) => finalUrl(r, _player)).join('\n'), '${items.length} URLs');
+                      _copy(items.map((r) => finalUrl(r, _player)).join('\n'),
+                          '${items.length} URLs');
                     },
                     child: const Text('URLs'),
                   ),
@@ -1486,7 +1709,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                                 'note': r.note,
                               })
                           .toList();
-                      _copy(const JsonEncoder.withIndent('  ').convert(list), '${items.length} items (JSON)');
+                      _copy(const JsonEncoder.withIndent('  ').convert(list),
+                          '${items.length} items (JSON)');
                     },
                     child: const Text('JSON'),
                   ),
