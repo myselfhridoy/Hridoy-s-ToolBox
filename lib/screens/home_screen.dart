@@ -13,8 +13,12 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final tools = PluginRegistry.instance.plugins;
-    final byId = {for (final p in tools) p.id: p};
+    final rawTools = PluginRegistry.instance.plugins;
+    final tools = [...rawTools]
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final byId = {for (final p in rawTools) p.id: p};
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final crossAxisCount = screenWidth >= 430 ? 5 : 4;
 
     return Scaffold(
       body: AmbientBackdrop(
@@ -37,9 +41,9 @@ class HomeScreen extends StatelessWidget {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
                         AppSpacing.xl,
-                        AppSpacing.xl,
-                        AppSpacing.xl,
+                        AppSpacing.lg,
                         0,
                       ),
                       child: Column(
@@ -51,7 +55,8 @@ class HomeScreen extends StatelessWidget {
                                 width: 42,
                                 height: 42,
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(AppRadius.md),
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.md),
                                   gradient: const LinearGradient(
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
@@ -97,10 +102,12 @@ class HomeScreen extends StatelessWidget {
                                   vertical: 5,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.14),
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.14),
                                   borderRadius: BorderRadius.circular(999),
                                   border: Border.all(
-                                    color: AppColors.primary.withValues(alpha: 0.3),
+                                    color:
+                                        AppColors.primary.withValues(alpha: 0.3),
                                   ),
                                 ),
                                 child: Text(
@@ -123,7 +130,7 @@ class HomeScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: AppSpacing.sm),
                             SizedBox(
-                              height: 44,
+                              height: 42,
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
                                 itemCount: quickTools.length,
@@ -172,9 +179,21 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ],
                           const SizedBox(height: AppSpacing.xl),
-                          Semantics(
-                            header: true,
-                            child: Text('All Tools', style: t.titleLarge),
+                          Row(
+                            children: [
+                              Semantics(
+                                header: true,
+                                child: Text('All Tools', style: t.titleLarge),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Text(
+                                'A–Z',
+                                style: t.labelSmall?.copyWith(
+                                  color: AppColors.textMuted,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: AppSpacing.md),
                         ],
@@ -183,18 +202,17 @@ class HomeScreen extends StatelessWidget {
                   ),
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.xl,
+                      AppSpacing.lg,
                       0,
-                      AppSpacing.xl,
+                      AppSpacing.lg,
                       AppSpacing.xxl,
                     ),
                     sliver: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.28,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                        childAspectRatio: 0.84,
                       ),
                       delegate: SliverChildBuilderDelegate(
                         (context, i) => ToolCard(tool: tools[i]),
