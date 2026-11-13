@@ -54,8 +54,11 @@ class AppRadius {
 class AppSizes {
   AppSizes._();
 
+  /// ন্যূনতম টাচ টার্গেট (Material: 48dp, গাইডলাইন ≥ 44)
   static const double minTouch = 48;
   static const double icon = 24;
   static const double iconLg = 32;
+
+  /// body টেক্সটের সর্বনিম্ন সাইজ
   static const double minText = 12;
 }
