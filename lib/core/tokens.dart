@@ -1,27 +1,34 @@
 import 'package:flutter/material.dart';
 
 /// Design tokens — সব রং, স্পেসিং, সাইজ এক জায়গায়।
-/// কম্পোনেন্টে সরাসরি Colors.white.withValues(...) না লিখে এগুলো ব্যবহার করুন।
 class AppColors {
   AppColors._();
 
-  static const bg = Color(0xFF0B0F1A);
-  static const navBg = Color(0xFF111626);
+  // Base surfaces
+  static const bg = Color(0xFF090D16);
+  static const navBg = Color(0xFF0F1422);
+  static const surfaceElevated = Color(0xFF151C2E);
+
+  // Brand accents
   static const primary = Color(0xFF6C8CFF);
   static const secondary = Color(0xFFB38CFF);
+  static const primaryGlow = Color(0x2E6C8CFF); // 18%
+  static const secondaryGlow = Color(0x24B38CFF); // 14%
 
-  // টেক্সট (bg-এর ওপর কন্ট্রাস্ট ≥ 4.5:1)
-  static const textPrimary = Colors.white;
-  static const textSecondary = Color(0xFFC3C7D4); // ~11:1
-  static const textMuted = Color(0xFF9CA1B0); // ~7:1
+  // Text (contrast ≥ 4.5:1 on bg)
+  static const textPrimary = Color(0xFFF4F6FB);
+  static const textSecondary = Color(0xFFC3C7D4);
+  static const textMuted = Color(0xFF8E95A8);
 
-  // Glass surface
+  // Glass surfaces & borders
   static const glassTint = Color(0x14FFFFFF); // white 8%
-  static const glassBorder = Color(0x33FFFFFF); // white 20%
-  static const fieldFill = Color(0x0DFFFFFF); // white 5%
+  static const glassHighlight = Color(0x1FFFFFFF); // white 12%
+  static const glassBorder = Color(0x29FFFFFF); // white 16%
+  static const glassBorderStrong = Color(0x47FFFFFF); // white 28%
+  static const fieldFill = Color(0x0FFFFFFF); // white 6%
 
   // Semantic
-  static const star = Colors.amberAccent;
+  static const star = Color(0xFFFFD166);
   static const error = Color(0xFFFF7A7A);
   static const success = Color(0xFF4ADE80);
 }
@@ -47,11 +54,8 @@ class AppRadius {
 class AppSizes {
   AppSizes._();
 
-  /// ন্যূনতম টাচ টার্গেট (Material: 48dp, গাইডলাইন ≥ 44)
   static const double minTouch = 48;
   static const double icon = 24;
   static const double iconLg = 32;
-
-  /// body টেক্সটের সর্বনিম্ন সাইজ
   static const double minText = 12;
 }
