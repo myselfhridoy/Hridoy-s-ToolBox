@@ -29,14 +29,14 @@ class GlassCard extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: r,
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
               AppColors.glassHighlight,
               Colors.transparent,
             ],
-            stops: const [0.0, 0.55],
+            stops: [0.0, 0.55],
           ),
         ),
         child: Material(
