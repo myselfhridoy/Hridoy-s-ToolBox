@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/plugin/tool_plugin.dart';
 import '../../core/storage/github_token_store.dart';
 import '../../core/tokens.dart';
+import '../../widgets/glass_card.dart';
 
 class GittomdTool implements ToolPlugin {
   @override
@@ -123,7 +124,7 @@ class _GittomdPageState extends State<GittomdPage> {
     } catch (_) {}
   }
 
-  Future<Map<String, dynamic>?> _loadPickerState(
+  Future?> _loadPickerState(
       String owner, String repo) async {
     final k = _treeKey(owner, repo);
     if (_treeMem.containsKey(k)) return _treeMem[k];
@@ -339,7 +340,7 @@ class _GittomdPageState extends State<GittomdPage> {
       throw Exception('Tree fetch failed (${treeRes.statusCode})');
     }
     final treeJson = jsonDecode(treeRes.body) as Map<String, dynamic>;
-    final tree = (treeJson['tree'] as List).cast<Map<String, dynamic>>();
+    final tree = (treeJson['tree'] as List).cast>();
 
     final blobs = tree
         .where((e) => e['type'] == 'blob')
@@ -439,7 +440,7 @@ class _GittomdPageState extends State<GittomdPage> {
       throw Exception('Tree fetch failed (${treeRes.statusCode})');
     }
     final treeJson = jsonDecode(treeRes.body) as Map<String, dynamic>;
-    final tree = (treeJson['tree'] as List).cast<Map<String, dynamic>>();
+    final tree = (treeJson['tree'] as List).cast>();
 
     final roots = _buildTree(tree, maxFiles: 500);
     if (mounted) {
@@ -454,7 +455,7 @@ class _GittomdPageState extends State<GittomdPage> {
     }
   }
 
-  List<_TreeNode> _buildTree(List<Map<String, dynamic>> tree,
+  List<_TreeNode> _buildTree(List> tree,
       {required int maxFiles}) {
     final blobs = tree
         .where((e) => e['type'] == 'blob')
@@ -821,13 +822,13 @@ class _GittomdPageState extends State<GittomdPage> {
         actions: [
           if (_mode == _Mode.pick && !_showPicker && _markdown.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.list_alt),
+              icon: const Icon(Icons.list_alt_rounded),
               tooltip: 'Back to picker',
               onPressed: () => setState(() => _showPicker = true),
             ),
           IconButton(
             icon: Icon(
-              hasToken ? Icons.lock : Icons.lock_open,
+              hasToken ? Icons.lock_rounded : Icons.lock_open_rounded,
               color: hasToken ? AppColors.success : null,
             ),
             tooltip: hasToken ? 'Token সেট আছে' : 'Token সেট করুন',
@@ -835,152 +836,200 @@ class _GittomdPageState extends State<GittomdPage> {
           ),
           if (_markdown.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.copy_all),
+              icon: const Icon(Icons.copy_all_rounded),
               tooltip: 'Copy Markdown',
               onPressed: _copy,
             ),
         ],
       ),
-      body: Column(
-        children: [
-          // ── URL input with embedded fetch icon ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.md,
-              AppSpacing.lg,
-              AppSpacing.sm,
-            ),
-            child: TextField(
-              controller: _urlController,
-              keyboardType: TextInputType.url,
-              textInputAction: TextInputAction.go,
-              decoration: InputDecoration(
-                hintText: 'https://github.com/owner/repo',
-                prefixIcon: const Icon(Icons.link),
-                filled: true,
-                fillColor: AppColors.fieldFill,
-                suffixIcon: Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: _loading
-                      ? const Padding(
-                          padding: EdgeInsets.all(14),
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2.2),
-                          ),
-                        )
-                      : IconButton(
-                          tooltip: 'Fetch',
-                          onPressed: _fetch,
-                          icon: const Icon(Icons.arrow_circle_right),
-                          iconSize: 28,
-                        ),
-                ),
-              ),
-              onSubmitted: (_) {
-                if (!_loading) _fetch();
-              },
-            ),
-          ),
-
-          // ── Mode selector ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<_Mode>(
-                segments: const [
-                  ButtonSegment(
-                    value: _Mode.readme,
-                    label: Text('README'),
-                    icon: Icon(Icons.article_outlined, size: 18),
-                  ),
-                  ButtonSegment(
-                    value: _Mode.fullRepo,
-                    label: Text('Full'),
-                    icon: Icon(Icons.folder_zip_outlined, size: 18),
-                  ),
-                  ButtonSegment(
-                    value: _Mode.pick,
-                    label: Text('Pick'),
-                    icon: Icon(Icons.checklist, size: 18),
-                  ),
-                ],
-                selected: {_mode},
-                onSelectionChanged: _onModeChanged,
-                showSelectedIcon: false,
-              ),
-            ),
-          ),
-
-          if (!hasToken)
+      body: AmbientBackdrop(
+        child: Column(
+          children: [
+            // ── Control Panel Card ──
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.lg,
                 AppSpacing.sm,
                 AppSpacing.lg,
-                0,
+                AppSpacing.sm,
               ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline,
-                    size: 16,
-                    color: AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'টোকেন ছাড়া শুধু পাবলিক রিপো (৬০ req/hr)',
-                      style: t.labelSmall?.copyWith(
-                        color: AppColors.textMuted,
+              child: GlassCard(
+                radius: AppRadius.lg,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: _urlController,
+                        keyboardType: TextInputType.url,
+                        textInputAction: TextInputAction.go,
+                        decoration: InputDecoration(
+                          hintText: 'https://github.com/owner/repo',
+                          prefixIcon: const Icon(
+                            Icons.link_rounded,
+                            color: AppColors.primary,
+                          ),
+                          suffixIcon: Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: _loading
+                                ? const Padding(
+                                    padding: EdgeInsets.all(14),
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.2,
+                                      ),
+                                    ),
+                                  )
+                                : IconButton(
+                                    tooltip: 'Fetch',
+                                    onPressed: _fetch,
+                                    icon: const Icon(
+                                      Icons.arrow_circle_right_rounded,
+                                      color: AppColors.primary,
+                                    ),
+                                    iconSize: 28,
+                                  ),
+                          ),
+                        ),
+                        onSubmitted: (_) {
+                          if (!_loading) _fetch();
+                        },
                       ),
-                    ),
+                      const SizedBox(height: AppSpacing.sm),
+                      SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<_Mode>(
+                          segments: const [
+                            ButtonSegment(
+                              value: _Mode.readme,
+                              label: Text('README'),
+                              icon: Icon(Icons.article_outlined, size: 18),
+                            ),
+                            ButtonSegment(
+                              value: _Mode.fullRepo,
+                              label: Text('Full'),
+                              icon: Icon(Icons.folder_zip_outlined, size: 18),
+                            ),
+                            ButtonSegment(
+                              value: _Mode.pick,
+                              label: Text('Pick'),
+                              icon: Icon(Icons.checklist_rounded, size: 18),
+                            ),
+                          ],
+                          selected: {_mode},
+                          onSelectionChanged: _onModeChanged,
+                          showSelectedIcon: false,
+                        ),
+                      ),
+                      if (!hasToken) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.info_outline_rounded,
+                              size: 15,
+                              color: AppColors.textMuted,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'টোকেন ছাড়া শুধু পাবলিক রিপো (৬০ req/hr)',
+                                style: t.labelSmall?.copyWith(
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
-                ],
-              ),
-            ),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Semantics(
-                liveRegion: true,
-                child: Text(
-                  _error!,
-                  style: t.bodyMedium?.copyWith(color: AppColors.error),
                 ),
               ),
             ),
-          if (_resolvedRepo != null &&
-              _markdown.isNotEmpty &&
-              !_showPicker)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.check_circle,
-                    size: 16,
-                    color: AppColors.success,
+
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  0,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                ),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: 10,
                   ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      '$_resolvedRepo · ${_markdown.length} chars',
-                      style: t.labelSmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.35),
                     ),
                   ),
-                ],
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      _error!,
+                      style: t.bodySmall?.copyWith(color: AppColors.error),
+                    ),
+                  ),
+                ),
               ),
-            ),
-          const SizedBox(height: AppSpacing.sm),
-          const Divider(height: 1),
-          Expanded(child: _buildBody()),
-        ],
+
+            if (_resolvedRepo != null &&
+                _markdown.isNotEmpty &&
+                !_showPicker)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  0,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    border: Border.all(
+                      color: AppColors.success.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        size: 16,
+                        color: AppColors.success,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '$_resolvedRepo · ${_markdown.length} chars',
+                          style: t.labelSmall?.copyWith(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            const Divider(height: 1),
+            Expanded(child: _buildBody()),
+          ],
+        ),
       ),
     );
   }
@@ -991,21 +1040,32 @@ class _GittomdPageState extends State<GittomdPage> {
         return Center(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.xxl),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                LinearProgressIndicator(
-                  value: _genTotal == 0 ? null : _genProgress / _genTotal,
-                  minHeight: 6,
-                  semanticsLabel: 'Fetching files',
-                  semanticsValue: '$_genProgress of $_genTotal',
+            child: GlassCard(
+              radius: AppRadius.lg,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value:
+                            _genTotal == 0 ? null : _genProgress / _genTotal,
+                        minHeight: 6,
+                        backgroundColor: AppColors.fieldFill,
+                        semanticsLabel: 'Fetching files',
+                        semanticsValue: '$_genProgress of $_genTotal',
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'Fetching $_genProgress / $_genTotal',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'Fetching $_genProgress / $_genTotal',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
+              ),
             ),
           ),
         );
@@ -1018,17 +1078,40 @@ class _GittomdPageState extends State<GittomdPage> {
     }
 
     if (_markdown.isEmpty) {
+      final icon = _mode == _Mode.readme
+          ? Icons.article_outlined
+          : _mode == _Mode.fullRepo
+              ? Icons.folder_zip_outlined
+              : Icons.checklist_rounded;
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.xxl),
-          child: Text(
-            _mode == _Mode.readme
-                ? 'Repo URL দিয়ে README আনুন'
-                : _mode == _Mode.fullRepo
-                    ? 'Repo URL দিয়ে পুরো রিপো Markdown-এ প্যাক করুন'
-                    : 'Repo URL দিয়ে ফাইল ট্রি আনুন, তারপর নির্দিষ্ট ফাইল/ফোল্ডার বেছে নিন',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textMuted),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Icon(icon, size: 26, color: AppColors.primary),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                _mode == _Mode.readme
+                    ? 'Repo URL দিয়ে README আনুন'
+                    : _mode == _Mode.fullRepo
+                        ? 'Repo URL দিয়ে পুরো রিপো Markdown-এ প্যাক করুন'
+                        : 'Repo URL দিয়ে ফাইল ট্রি আনুন, তারপর নির্দিষ্ট ফাইল/ফোল্ডার বেছে নিন',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textMuted),
+              ),
+            ],
           ),
         ),
       );
@@ -1039,10 +1122,22 @@ class _GittomdPageState extends State<GittomdPage> {
       padding: const EdgeInsets.all(AppSpacing.lg),
       styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
         codeblockDecoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+          color: AppColors.navBg,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.glassBorder),
         ),
-        code: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+        code: const TextStyle(
+          fontFamily: 'monospace',
+          fontSize: 12,
+          color: AppColors.textPrimary,
+        ),
+        blockquoteDecoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          border: const Border(
+            left: BorderSide(color: AppColors.primary, width: 3),
+          ),
+        ),
       ),
     );
   }
@@ -1075,61 +1170,74 @@ class _GittomdPageState extends State<GittomdPage> {
             AppSpacing.lg,
             AppSpacing.sm,
           ),
-          child: Column(
-            children: [
-              Row(
+          child: GlassCard(
+            radius: AppRadius.md,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
                 children: [
-                  Expanded(
-                    child: Text(
-                      '$selectedCount files · ${_formatSize(selectedSize)}',
-                      style: t.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '$selectedCount files · ${_formatSize(selectedSize)}',
+                          style: t.labelSmall?.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: _selectAll,
+                        child: const Text('All'),
+                      ),
+                      TextButton(
+                        onPressed: _clearSelection,
+                        child: const Text('Clear'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: selectedCount == 0 || _loading
+                          ? null
+                          : _generateFromSelection,
+                      icon: const Icon(Icons.download_rounded, size: 20),
+                      label: Text(
+                        selectedCount == 0
+                            ? 'Generate Markdown'
+                            : 'Generate Markdown ($selectedCount)',
                       ),
                     ),
                   ),
-                  TextButton(
-                    onPressed: _selectAll,
-                    child: const Text('All'),
-                  ),
-                  TextButton(
-                    onPressed: _clearSelection,
-                    child: const Text('Clear'),
-                  ),
                 ],
               ),
-              const SizedBox(height: 6),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: selectedCount == 0 || _loading
-                      ? null
-                      : _generateFromSelection,
-                  icon: const Icon(Icons.download, size: 20),
-                  label: Text(
-                    selectedCount == 0
-                        ? 'Generate Markdown'
-                        : 'Generate Markdown ($selectedCount)',
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
           child: TextField(
             controller: _pickerSearchController,
             style: t.bodyMedium,
             decoration: InputDecoration(
               hintText: 'Filter by path…',
-              prefixIcon: const Icon(Icons.search, size: 20),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
+              prefixIcon: const Icon(Icons.search_rounded, size: 20),
               suffixIcon: _pickerQuery.isNotEmpty
                   ? IconButton(
                       tooltip: 'Clear filter',
-                      icon: const Icon(Icons.clear, size: 20),
+                      icon: const Icon(Icons.clear_rounded, size: 20),
                       onPressed: () {
                         _pickerSearchController.clear();
                         setState(() => _pickerQuery = '');
@@ -1211,6 +1319,7 @@ class _GittomdPageState extends State<GittomdPage> {
                 Icon(
                   showChildren ? Icons.expand_more : Icons.chevron_right,
                   size: 20,
+                  color: AppColors.textSecondary,
                 )
               else
                 const SizedBox(width: 20),
@@ -1225,9 +1334,13 @@ class _GittomdPageState extends State<GittomdPage> {
                 ),
               ),
               Icon(
-                node.isFolder ? Icons.folder : Icons.description,
-                size: 20,
-                color: AppColors.textSecondary,
+                node.isFolder
+                    ? Icons.folder_rounded
+                    : Icons.description_outlined,
+                size: 19,
+                color: node.isFolder
+                    ? AppColors.primary
+                    : AppColors.textSecondary,
               ),
               const SizedBox(width: 8),
               Expanded(
