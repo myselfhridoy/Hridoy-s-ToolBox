@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../core/plugin/tool_plugin.dart';
+import '../core/storage/usage_store.dart';
 import '../core/tokens.dart';
 import 'favorite_button.dart';
 import 'glass_card.dart';
@@ -9,11 +10,13 @@ class _ToolIconBadge extends StatelessWidget {
   final IconData icon;
   final double size;
   final double iconSize;
+  final double radius;
 
   const _ToolIconBadge({
     required this.icon,
-    this.size = 42,
-    this.iconSize = 22,
+    this.size = 38,
+    this.iconSize = 20,
+    this.radius = AppRadius.sm,
   });
 
   @override
@@ -22,7 +25,7 @@ class _ToolIconBadge extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(radius),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -40,7 +43,7 @@ class _ToolIconBadge extends StatelessWidget {
   }
 }
 
-/// গ্রিডে ব্যবহারের কমপ্যাক্ট কার্ড (Home, Library)।
+/// ৪/৫ কলাম গ্রিডে ব্যবহারের কম্প্যাক্ট কার্ড (Home, Library)।
 class ToolCard extends StatelessWidget {
   final ToolPlugin tool;
   const ToolCard({super.key, required this.tool});
@@ -48,56 +51,69 @@ class ToolCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final category = tool.categories.isNotEmpty ? tool.categories.first : null;
-
     return GlassCard(
-      radius: AppRadius.lg,
+      radius: AppRadius.md,
       onTap: () => context.push('/tool/${tool.id}'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.sm,
-          AppSpacing.md,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ToolIconBadge(icon: tool.icon, size: 40, iconSize: 21),
-                const Spacer(),
-                FavoriteButton(toolId: tool.id, size: 19),
-              ],
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 6,
+              vertical: 8,
             ),
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.only(right: AppSpacing.xs),
-              child: Text(
-                tool.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: t.titleMedium?.copyWith(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w600,
-                ),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _ToolIconBadge(
+                    icon: tool.icon,
+                    size: 36,
+                    iconSize: 19,
+                    radius: 10,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    tool.name,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.labelSmall?.copyWith(
+                      fontSize: 11.5,
+                      height: 1.15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
               ),
             ),
-            if (category != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                category,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: t.labelSmall?.copyWith(
-                  fontSize: 11.5,
-                  color: AppColors.textMuted,
-                ),
-              ),
-            ],
-          ],
-        ),
+          ),
+          Positioned(
+            top: 3,
+            right: 3,
+            child: ListenableBuilder(
+              listenable: UsageStore.instance,
+              builder: (context, _) {
+                final fav = UsageStore.instance.isFavorite(tool.id);
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => UsageStore.instance.toggleFavorite(tool.id),
+                  child: Padding(
+                    padding: const EdgeInsets.all(3),
+                    child: Icon(
+                      fav ? Icons.star_rounded : Icons.star_outline_rounded,
+                      size: 13,
+                      color: fav
+                          ? AppColors.star
+                          : AppColors.textMuted.withValues(alpha: 0.55),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -123,7 +139,12 @@ class ToolListTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              _ToolIconBadge(icon: tool.icon, size: 40, iconSize: 20),
+              _ToolIconBadge(
+                icon: tool.icon,
+                size: 40,
+                iconSize: 20,
+                radius: AppRadius.md,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
