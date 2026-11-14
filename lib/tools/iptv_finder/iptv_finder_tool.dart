@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/plugin/tool_plugin.dart';
 import '../../core/storage/github_token_store.dart';
 import '../../core/tokens.dart';
@@ -194,7 +195,7 @@ String _normalizeExtra(String u) {
   if (glM != null) {
     u = u.replaceFirst(
       glM.group(0)!,
-      'https://' 'gitlab.com/${glM.group(1)}/-/raw/',
+      'https://gitlab.com/${glM.group(1)}/-/raw/',
     );
   }
   final gistM = RegExp(
@@ -202,14 +203,13 @@ String _normalizeExtra(String u) {
           caseSensitive: false)
       .firstMatch(u);
   if (gistM != null) {
-    return 'https://'
-        'gist.githubusercontent.com/${gistM.group(1)}/${gistM.group(2)}/raw';
+    return 'https://gist.githubusercontent.com/${gistM.group(1)}/${gistM.group(2)}/raw';
   }
   final pbM = RegExp(
           r'^https://pastebin\.com/(?!archive|trends|tools|login|signup|faq)([A-Za-z0-9]{6,10})/?$')
       .firstMatch(u);
   if (pbM != null) {
-    return 'https://' 'pastebin.com/raw/${pbM.group(1)}';
+    return 'https://pastebin.com/raw/${pbM.group(1)}';
   }
   return u;
 }
@@ -224,8 +224,8 @@ Future<StringMap> _gistUserFiles(
     final headers = <String, String>{
       if (token.isNotEmpty) 'h_authorization': 'Bearer $token',
     };
-    final url = 'https://'
-        'api.github.com/users/${Uri.encodeComponent(user)}/gists?per_page=100&page=$pg';
+    final url =
+        'https://api.github.com/users/${Uri.encodeComponent(user)}/gists?per_page=100&page=$pg';
     final r = await fetchFollow(url, headers,
         timeout: const Duration(seconds: 15), maxBytes: 3000000);
     if (r.code != 200) {
@@ -411,6 +411,78 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     _toast('Copied $label');
   }
 
+  String? _resolveSourceUrl(FoundLink r) {
+    final s = r.src.trim();
+    if (s.isEmpty) return null;
+
+    if (s.startsWith('gh-host:')) {
+      final u = s.substring(8).trim();
+      return u.startsWith('http') ? u : null;
+    }
+    if (s.startsWith('probe:')) {
+      final u = s.substring(6).trim();
+      return u.startsWith('http') ? u : null;
+    }
+    if (s.startsWith('extra:')) {
+      final u = s.substring(6).trim();
+      if (u.startsWith('http://') || u.startsWith('https://')) return u;
+      if (u.isNotEmpty && !u.contains(' ')) return 'https://$u';
+      return null;
+    }
+    if (s.startsWith('http://') || s.startsWith('https://')) {
+      return s;
+    }
+    if (s.startsWith('gist:')) {
+      final rest = s.substring(5).trim();
+      final user = rest.split('/').first;
+      if (user.isNotEmpty) return 'https://gist.github.com/$user';
+      return null;
+    }
+    if (s.startsWith('xtream:') || s.startsWith('xtream-enum:')) {
+      if ((r.xtBase ?? '').isNotEmpty &&
+          (r.xtUser ?? '').isNotEmpty &&
+          (r.xtPass ?? '').isNotEmpty) {
+        return '${r.xtBase}/get.php?username=${Uri.encodeComponent(r.xtUser!)}&password=${Uri.encodeComponent(r.xtPass!)}&type=m3u_plus&output=ts';
+      }
+      if (r.host.isNotEmpty) return 'http://${r.host}';
+      return null;
+    }
+
+    // GitHub repo path format: "owner/repo/path/to/file.m3u"
+    if (!s.contains(':') && !s.contains(' ')) {
+      final parts = s.split('/');
+      if (parts.length >= 3) {
+        final owner = parts[0];
+        final repo = parts[1];
+        final filePath = parts.sublist(2).join('/');
+        return 'https://github.com/$owner/$repo/blob/HEAD/$filePath';
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _openSourceUrl(FoundLink r) async {
+    final rawUrl = _resolveSourceUrl(r);
+    if (rawUrl == null || rawUrl.isEmpty) {
+      _toast('Source URL পাওয়া যায়নি');
+      return;
+    }
+    final uri = Uri.tryParse(rawUrl);
+    if (uri == null) {
+      _toast('Invalid Source URL');
+      return;
+    }
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok) {
+        await _copy(rawUrl, 'source URL');
+      }
+    } catch (_) {
+      await _copy(rawUrl, 'source URL');
+    }
+  }
+
   // ───────────── scan control ─────────────
 
   Future<void> _start() async {
@@ -537,7 +609,7 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
       if (!RegExp(r'^https?://', caseSensitive: false).hasMatch(eu)) continue;
       final neu = _normalizeExtra(eu);
       if (!files.containsKey(neu)) {
-        files[neu] = 'extra: ${Uri.tryParse(neu)?.host ?? ''}';
+        files[neu] = 'extra: $neu';
         ex++;
       }
     }
@@ -1531,6 +1603,7 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
             : AppColors.textMuted;
     final lic = licHex(r);
     final url = finalUrl(r, _player);
+    final sourceUrl = _resolveSourceUrl(r);
 
     return GlassCard(
       radius: AppRadius.md,
@@ -1592,7 +1665,7 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                   const SizedBox(height: AppSpacing.xs),
                   Text(r.src,
                       style: t.labelSmall?.copyWith(color: AppColors.textMuted),
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: AppSpacing.xs),
                   Container(
@@ -1618,6 +1691,13 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                         icon: const Icon(Icons.copy_rounded, size: 16),
                         label: const Text('Copy'),
                       ),
+                      if (sourceUrl != null)
+                        TextButton.icon(
+                          onPressed: () => _openSourceUrl(r),
+                          onLongPress: () => _copy(sourceUrl, 'source URL'),
+                          icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                          label: const Text('Source URL'),
+                        ),
                       if (r.host.isNotEmpty)
                         TextButton.icon(
                           onPressed: () => _exploreHost(r.host),
