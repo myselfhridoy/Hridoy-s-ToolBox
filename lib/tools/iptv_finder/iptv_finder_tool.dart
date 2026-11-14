@@ -1,39 +1,38 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../../core/plugin/tool_plugin.dart';
 import '../../core/storage/github_token_store.dart';
 import '../../core/tokens.dart';
 import '../../widgets/glass_card.dart';
-import 'iptv_models.dart';
-import 'net_utils.dart';
-import 'm3u_parser.dart';
+
 import 'github_search.dart';
-import 'xtream_client.dart';
+import 'iptv_models.dart';
+import 'iptv_session_store.dart';
 import 'link_validator.dart';
+import 'm3u_parser.dart';
+import 'net_utils.dart';
+import 'xtream_client.dart';
 
 typedef StringMap = Map<String, String>;
 
 class IptvFinderTool implements ToolPlugin {
   @override
   String get id => 'iptv_finder';
-
   @override
   String get name => 'IPTV Finder';
-
   @override
   IconData get icon => Icons.live_tv;
-
   @override
   List<String> get categories => ['Developer', 'Media'];
-
   @override
   List<String> get tags =>
       ['iptv', 'm3u', 'xtream', 'github', 'stream', 'scanner'];
-
   @override
   Widget buildPage(BuildContext context) => const IptvFinderPage();
 }
@@ -51,13 +50,15 @@ String licHex(FoundLink r) {
       .replaceFirst(RegExp(r'^.*?license_key=', caseSensitive: false), '')
       .trim();
   final hexp = RegExp(
-      r'^[0-9a-f]{32}:[0-9a-f]{32}(,[0-9a-f]{32}:[0-9a-f]{32})*$',
-      caseSensitive: false);
+    r'^[0-9a-f]{32}:[0-9a-f]{32}(,[0-9a-f]{32}:[0-9a-f]{32})*$',
+    caseSensitive: false,
+  );
   if (RegExp(r'^https?:', caseSensitive: false).hasMatch(v)) {
-    final kid = RegExp(r'[?&]keyid=([0-9a-f]{32})', caseSensitive: false)
+    final kid =
+        RegExp(r'[?&]keyid=([0-9a-f]{32})', caseSensitive: false)
+            .firstMatch(v);
+    final key = RegExp(r'[?&]key=([0-9a-f]{32})', caseSensitive: false)
         .firstMatch(v);
-    final key =
-        RegExp(r'[?&]key=([0-9a-f]{32})', caseSensitive: false).firstMatch(v);
     return (kid != null && key != null)
         ? '${kid.group(1)}:${key.group(1)}'
         : '';
@@ -65,9 +66,7 @@ String licHex(FoundLink r) {
   if (v.startsWith('{')) {
     try {
       final obj = jsonDecode(v);
-      if (obj is Map &&
-          obj['keys'] is List &&
-          (obj['keys'] as List).isNotEmpty) {
+      if (obj is Map && obj['keys'] is List && (obj['keys'] as List).isNotEmpty) {
         return (obj['keys'] as List)
             .map((k) =>
                 '${b64uToHex(k['kid'].toString())}:${b64uToHex(k['k'].toString())}')
@@ -90,6 +89,7 @@ String licHex(FoundLink r) {
 String finalUrl(FoundLink r, String player) {
   var u = r.url;
   final opts = <String>[];
+
   if (player == 'tivimate') {
     final k = licHex(r);
     if (k.isNotEmpty &&
@@ -109,6 +109,7 @@ String finalUrl(FoundLink r, String player) {
       }
     }
   }
+
   if (player != 'vlc') {
     final h = r.headers;
     if ((h['user-agent'] ?? '').isNotEmpty) {
@@ -130,6 +131,7 @@ String finalUrl(FoundLink r, String player) {
       }
     });
   }
+
   if (opts.isNotEmpty) {
     u += (u.contains('|') ? '&' : '|') + opts.join('&');
   }
@@ -163,6 +165,7 @@ String buildM3U(List<FoundLink> items, String player, String group) {
               : ((r.cat ?? '').isNotEmpty ? r.cat! : name));
       final gt = gtRaw.replaceAll('"', "'");
       b.writeln('#EXTINF:-1$id$lo group-title="$gt",$t');
+
       if (player == 'kodi') {
         for (final p in r.props) {
           b.writeln('#KODIPROP:$p');
@@ -190,8 +193,9 @@ String buildM3U(List<FoundLink> items, String player, String group) {
 
 String _normalizeExtra(String u) {
   u = ghRawUrl(u);
-  final glM = RegExp(r'^https://gitlab\.com/(.+?)/-/blob/', caseSensitive: false)
-      .firstMatch(u);
+  final glM =
+      RegExp(r'^https://gitlab\.com/(.+?)/-/blob/', caseSensitive: false)
+          .firstMatch(u);
   if (glM != null) {
     u = u.replaceFirst(
       glM.group(0)!,
@@ -199,15 +203,15 @@ String _normalizeExtra(String u) {
     );
   }
   final gistM = RegExp(
-          r'^https://gist\.github\.com/([^/\s]+)/([0-9a-f]+)/?$',
-          caseSensitive: false)
-      .firstMatch(u);
+    r'^https://gist\.github\.com/([^/\s]+)/([0-9a-f]+)/?$',
+    caseSensitive: false,
+  ).firstMatch(u);
   if (gistM != null) {
     return 'https://gist.githubusercontent.com/${gistM.group(1)}/${gistM.group(2)}/raw';
   }
   final pbM = RegExp(
-          r'^https://pastebin\.com/(?!archive|trends|tools|login|signup|faq)([A-Za-z0-9]{6,10})/?$')
-      .firstMatch(u);
+    r'^https://pastebin\.com/(?!archive|trends|tools|login|signup|faq)([A-Za-z0-9]{6,10})/?$',
+  ).firstMatch(u);
   if (pbM != null) {
     return 'https://pastebin.com/raw/${pbM.group(1)}';
   }
@@ -226,8 +230,12 @@ Future<StringMap> _gistUserFiles(
     };
     final url =
         'https://api.github.com/users/${Uri.encodeComponent(user)}/gists?per_page=100&page=$pg';
-    final r = await fetchFollow(url, headers,
-        timeout: const Duration(seconds: 15), maxBytes: 3000000);
+    final r = await fetchFollow(
+      url,
+      headers,
+      timeout: const Duration(seconds: 15),
+      maxBytes: 3000000,
+    );
     if (r.code != 200) {
       log('gist:$user HTTP ${r.code}');
       break;
@@ -263,7 +271,8 @@ class IptvFinderPage extends StatefulWidget {
   State<IptvFinderPage> createState() => _IptvFinderPageState();
 }
 
-class _IptvFinderPageState extends State<IptvFinderPage> {
+class _IptvFinderPageState extends State<IptvFinderPage>
+    with WidgetsBindingObserver {
   static SharedPreferences? _prefs;
 
   final _channelsC = TextEditingController();
@@ -304,14 +313,41 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
 
   bool _rebuildScheduled = false;
 
+  // persistence-related
+  Timer? _saveDebounce;
+  bool _restoredFromSession = false;
+
   @override
   void initState() {
     super.initState();
-    _restorePrefs();
+    WidgetsBinding.instance.addObserver(this);
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    _prefs = await SharedPreferences.getInstance();
+    _loadPrefsIntoUi();
+    await IptvSessionStore.instance.ensureReady();
+    await _restoreSession();
+    if (mounted) setState(() {});
+  }
+
+  void _loadPrefsIntoUi() {
+    _channelsC.text = _prefs?.getString('iptv_channels') ?? '';
+    _extraC.text = _prefs?.getString('iptv_extra') ?? '';
+    _hostsC.text = _prefs?.getString('iptv_hosts') ?? '';
+    _groupC.text = _prefs?.getString('iptv_group') ?? '';
+    _mode = _prefs?.getString('iptv_mode') ?? 'ch';
+    _player = _prefs?.getString('iptv_player') ?? 'tivimate';
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _saveDebounce?.cancel();
+    _saveSession(); // fire-and-forget; async complete হবে
+    _toastTimer?.cancel();
+
     _channelsC.dispose();
     _extraC.dispose();
     _hostsC.dispose();
@@ -322,15 +358,14 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     super.dispose();
   }
 
-  Future<void> _restorePrefs() async {
-    _prefs ??= await SharedPreferences.getInstance();
-    _channelsC.text = _prefs!.getString('iptv_channels') ?? '';
-    _extraC.text = _prefs!.getString('iptv_extra') ?? '';
-    _hostsC.text = _prefs!.getString('iptv_hosts') ?? '';
-    _groupC.text = _prefs!.getString('iptv_group') ?? '';
-    _mode = _prefs!.getString('iptv_mode') ?? 'ch';
-    _player = _prefs!.getString('iptv_player') ?? 'tivimate';
-    if (mounted) setState(() {});
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      _saveDebounce?.cancel();
+      _saveSessionSync();
+    }
   }
 
   Future<void> _savePrefs() async {
@@ -340,6 +375,147 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     await _prefs?.setString('iptv_group', _groupC.text);
     await _prefs?.setString('iptv_mode', _mode);
     await _prefs?.setString('iptv_player', _player);
+  }
+
+  // ───────────── session persistence ─────────────
+
+  Map<String, dynamic> _sessionSnapshot() => {
+        'version': 1,
+        'savedAt': DateTime.now().millisecondsSinceEpoch,
+        'mode': _mode,
+        'player': _player,
+        'stage': _stage,
+        'finished': _finished,
+        'found': _foundCount,
+        'results': _results.map((r) => r.toJson()).toList(),
+        'selected': _selected.toList(),
+        'chipNames': _chipNames.toList(),
+        'log': _logLines.length > 100
+            ? _logLines.sublist(_logLines.length - 100)
+            : _logLines,
+        'channels': _channelsC.text,
+        'extra': _extraC.text,
+        'hosts': _hostsC.text,
+        'group': _groupC.text,
+        'pages': _pages,
+        'validate': _validate,
+        'keepDead': _keepDead,
+        'verifyAllHosts': _verifyAllHosts,
+        'useGhDomainSearch': _useGhDomainSearch,
+        'filterChannel': _filterChannel,
+        'filterHost': _filterHost,
+        'onlyOk': _onlyOk,
+        'hideDirect': _hideDirect,
+        'hideXtream': _hideXtream,
+      };
+
+  bool get _hasSomethingToSave => _results.isNotEmpty;
+
+  Future<void> _saveSession() async {
+    if (!_hasSomethingToSave) return;
+    await IptvSessionStore.instance.save(_sessionSnapshot());
+  }
+
+  void _saveSessionSync() {
+    if (!_hasSomethingToSave) return;
+    IptvSessionStore.instance.saveSync(_sessionSnapshot());
+  }
+
+  void _scheduleSaveSession() {
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(seconds: 2), () {
+      if (mounted) _saveSession();
+    });
+  }
+
+  Future<void> _restoreSession() async {
+    final data = await IptvSessionStore.instance.load();
+    if (data == null) return;
+    if ((data['version'] as num?)?.toInt() != 1) return;
+
+    try {
+      final rawResults = (data['results'] as List?) ?? const [];
+      if (rawResults.isEmpty) return;
+
+      final restored = <FoundLink>[];
+      for (final j in rawResults) {
+        if (j is Map) {
+          try {
+            restored.add(FoundLink.fromJson(Map<String, dynamic>.from(j)));
+          } catch (_) {}
+        }
+      }
+      if (restored.isEmpty) return;
+
+      _results.addAll(restored);
+      _selected.addAll(
+        ((data['selected'] as List?) ?? const [])
+            .whereType<num>()
+            .map((e) => e.toInt()),
+      );
+      _chipNames.addAll(
+        ((data['chipNames'] as List?) ?? const []).whereType<String>(),
+      );
+      _logLines.addAll(
+        ((data['log'] as List?) ?? const []).whereType<String>(),
+      );
+
+      _mode = (data['mode'] as String?) ?? _mode;
+      _player = (data['player'] as String?) ?? _player;
+      _stage = (data['stage'] as String?) ?? _stage;
+      _finished = (data['finished'] as bool?) ?? true;
+      _foundCount = (data['found'] as num?)?.toInt() ?? _results.length;
+
+      // সেশন প্রিফসের চেয়ে নতুন হতে পারে — override
+      _channelsC.text = (data['channels'] as String?) ?? _channelsC.text;
+      _extraC.text = (data['extra'] as String?) ?? _extraC.text;
+      _hostsC.text = (data['hosts'] as String?) ?? _hostsC.text;
+      _groupC.text = (data['group'] as String?) ?? _groupC.text;
+
+      _pages = (data['pages'] as num?)?.toInt() ?? _pages;
+      _validate = (data['validate'] as bool?) ?? _validate;
+      _keepDead = (data['keepDead'] as bool?) ?? _keepDead;
+      _verifyAllHosts = (data['verifyAllHosts'] as bool?) ?? _verifyAllHosts;
+      _useGhDomainSearch =
+          (data['useGhDomainSearch'] as bool?) ?? _useGhDomainSearch;
+
+      _filterChannel = (data['filterChannel'] as String?) ?? '';
+      _filterHost = (data['filterHost'] as String?) ?? '';
+      _onlyOk = (data['onlyOk'] as bool?) ?? false;
+      _hideDirect = (data['hideDirect'] as bool?) ?? false;
+      _hideXtream = (data['hideXtream'] as bool?) ?? false;
+
+      // DropdownButton assert এড়াতে filter validate
+      if (_filterChannel.isNotEmpty &&
+          !_channelOptions.contains(_filterChannel)) {
+        _filterChannel = '';
+      }
+      if (_filterHost.isNotEmpty) {
+        final hosts = _hostStats.map((h) => h.host).toSet();
+        if (!hosts.contains(_filterHost)) _filterHost = '';
+      }
+
+      _restoredFromSession = true;
+    } catch (_) {
+      // corrupt data — ignore
+    }
+  }
+
+  Future<void> _clearSession() async {
+    await IptvSessionStore.instance.clear();
+    if (!mounted) return;
+    setState(() {
+      _results.clear();
+      _selected.clear();
+      _chipNames.clear();
+      _logLines.clear();
+      _restoredFromSession = false;
+      _foundCount = 0;
+      _stage = 'Ready';
+      _progA = 0;
+      _progB = 0;
+      _finished = true;
+    });
   }
 
   // ───────────── small UI helpers ─────────────
@@ -381,9 +557,9 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
   void _done(int found, int files, {String mode = 'channel'}) {
     _finished = true;
     _foundCount = found;
-    _log(
-        'শেষ — $found লিংক${files > 0 ? ' ($files ফাইল স্ক্যান করা হয়েছে)' : ''}');
+    _log('শেষ — $found লিংক${files > 0 ? ' ($files ফাইল স্ক্যান করা হয়েছে)' : ''}');
     setState(() => _busy = false);
+    _saveSession();
   }
 
   void _addChannelChip(String name) {
@@ -394,10 +570,12 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     m.i = _results.length;
     _results.add(m);
     _scheduleRebuild();
+    _scheduleSaveSession();
   }
 
   Timer? _toastTimer;
   String? _toastMsg;
+
   void _toast(String msg) {
     setState(() => _toastMsg = msg);
     _toastTimer?.cancel();
@@ -414,7 +592,6 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
   String? _resolveSourceUrl(FoundLink r) {
     final s = r.src.trim();
     if (s.isEmpty) return null;
-
     if (s.startsWith('gh-host:')) {
       final u = s.substring(8).trim();
       return u.startsWith('http') ? u : null;
@@ -447,8 +624,6 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
       if (r.host.isNotEmpty) return 'http://${r.host}';
       return null;
     }
-
-    // GitHub repo path format: "owner/repo/path/to/file.m3u"
     if (!s.contains(':') && !s.contains(' ')) {
       final parts = s.split('/');
       if (parts.length >= 3) {
@@ -458,7 +633,6 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
         return 'https://github.com/$owner/$repo/blob/HEAD/$filePath';
       }
     }
-
     return null;
   }
 
@@ -494,7 +668,10 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
       _toast('অন্তত একটা host বা URL দিন');
       return;
     }
+
     await _savePrefs();
+    await IptvSessionStore.instance.clear();
+
     setState(() {
       _results.clear();
       _selected.clear();
@@ -510,7 +687,9 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
       _progA = 0;
       _progB = 0;
       _foundCount = 0;
+      _restoredFromSession = false;
     });
+
     try {
       if (_mode == 'ch') {
         await _runChannelScan();
@@ -534,11 +713,12 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
   Future<void> _runChannelScan() async {
     final token = GitHubTokenStore.instance.token ?? '';
     final extra = _extraC.text.trim();
+
     if (token.isEmpty && extra.isEmpty) {
-      _fail(
-          'GitHub টোকেন সেট করুন (উপরে 🔒 আইকন) অথবা অন্তত একটা extra source দিন');
+      _fail('GitHub টোকেন সেট করুন (উপরে 🔒 আইকন) অথবা অন্তত একটা extra source দিন');
       return;
     }
+
     final chs = parseChannelsInput(_channelsC.text);
     if (chs.isEmpty) {
       _fail('অন্তত একটা চ্যানেলের নাম দিন');
@@ -593,8 +773,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     for (var eu in extra.split(RegExp(r'\r\n|\r|\n'))) {
       eu = eu.trim();
       if (eu.isEmpty) continue;
-      final gm =
-          RegExp(r'^gist:([A-Za-z0-9-]+)$', caseSensitive: false).firstMatch(eu);
+      final gm = RegExp(r'^gist:([A-Za-z0-9-]+)$', caseSensitive: false)
+          .firstMatch(eu);
       if (gm != null) {
         final g = await _gistUserFiles(gm.group(1)!, token, _log);
         for (final entry in g.entries) {
@@ -643,6 +823,7 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
           }
         }
       }
+
       if (_validate && batch.isNotEmpty) {
         await validateLinks(batch, (m) async {
           chk++;
@@ -657,6 +838,7 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
           if (chk % 8 == 0) _progress('Validating ($chk)', done, T, found: okc);
         }, concurrency: 10);
       }
+
       done += chunk.length;
       _progress('Scanning files', done, T, found: _validate ? okc : found);
     }
@@ -672,6 +854,7 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
         _log('Failed: $pp');
       }
     }
+
     _done(found, T);
   }
 
@@ -713,6 +896,7 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     for (var hi = 0; hi < hosts.length; hi++) {
       if (_aborted) return;
       _progress('Host ${hi + 1}', hi, hosts.length, found: totalFound);
+
       final h = hosts[hi];
       final hUrl = normalizeHostInput(h);
       var creds = xtreamCredsFromUrl(hUrl);
@@ -733,8 +917,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
 
       if (creds != null) {
         _log('Xtream creds detected for $baseHost (${creds.kind})');
-        final enumRes = await xtreamEnumerate(
-            creds.base, creds.user, creds.pass, const {}, _log);
+        final enumRes =
+            await xtreamEnumerate(creds.base, creds.user, creds.pass, const {}, _log);
         if (enumRes.ok) {
           _log(
               'Xtream: ${enumRes.channels.length} channels via ${enumRes.method} (pattern: ${enumRes.pattern ?? 'n/a'})');
@@ -761,6 +945,7 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
         final ghQ = ['"$domain" extension:m3u', '"$domain" extension:m3u8'];
         final ghFiles = <String>{};
         var cappedOut = false;
+
         for (final q in ghQ) {
           if (cappedOut) break;
           for (var p = 1; p <= 3; p++) {
@@ -783,6 +968,7 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
           }
         }
         _log('GitHub: ${ghFiles.length} files containing domain');
+
         if (ghFiles.isNotEmpty) {
           final foundXtream = <String, XtreamCreds>{};
           final keys = ghFiles.toList();
@@ -800,8 +986,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                 hostFound++;
                 final cc = xtreamCredsFromUrl(m.url);
                 if (cc != null) {
-                  foundXtream.putIfAbsent(
-                      '${cc.base}|${cc.user}|${cc.pass}', () => cc);
+                  foundXtream.putIfAbsent('${cc.base}|${cc.user}|${cc.pass}',
+                      () => cc);
                 }
               }
             }
@@ -865,9 +1051,9 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
             await enrichLicense(m);
           }
           _scheduleRebuild();
+          _scheduleSaveSession();
         }, concurrency: 20);
-        _progress('Verifying (${ci + 1}/${chunks.length})', ci + 1,
-            chunks.length,
+        _progress('Verifying (${ci + 1}/${chunks.length})', ci + 1, chunks.length,
             found: totalOk);
       }
       _log('Verification finished. Found $totalOk working links.');
@@ -903,6 +1089,7 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     await validateLinks(items, (m) async {
       if (m.ok == true) await enrichLicense(m);
       _scheduleRebuild();
+      _scheduleSaveSession();
     }, concurrency: 16);
     setState(() => _busy = false);
   }
@@ -999,7 +1186,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                     tooltip: obscure ? 'Show token' : 'Hide token',
                     icon: Icon(
                         obscure ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setDialogState(() => obscure = !obscure),
+                    onPressed: () =>
+                        setDialogState(() => obscure = !obscure),
                   ),
                 ),
               ),
@@ -1062,6 +1250,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
               controller: _scrollC,
               slivers: [
                 SliverToBoxAdapter(child: _buildForm(t)),
+                if (_restoredFromSession && _results.isNotEmpty)
+                  SliverToBoxAdapter(child: _buildRestoreBanner(t)),
                 SliverToBoxAdapter(child: _buildProgressPanel(t)),
                 if (_results.isNotEmpty)
                   SliverToBoxAdapter(child: _buildToolsPanel(t)),
@@ -1100,14 +1290,53 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     );
   }
 
+  Widget _buildRestoreBanner(TextTheme t) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0),
+      child: GlassCard(
+        radius: AppRadius.md,
+        borderColor: AppColors.primary.withValues(alpha: 0.35),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md, vertical: 8),
+          child: Row(
+            children: [
+              const Icon(Icons.restore_rounded,
+                  size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'আগের সেশন থেকে ${_results.length} লিংক ফিরে এসেছে'
+                  '${_finished ? '' : ' (scan অসম্পূর্ণ ছিল)'}',
+                  style: t.bodySmall
+                      ?.copyWith(color: AppColors.textSecondary),
+                ),
+              ),
+              TextButton(
+                onPressed: _clearSession,
+                style:
+                    TextButton.styleFrom(foregroundColor: AppColors.error),
+                child: const Text('Clear'),
+              ),
+              IconButton(
+                tooltip: 'Dismiss',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.close_rounded, size: 18),
+                onPressed: () =>
+                    setState(() => _restoredFromSession = false),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildForm(TextTheme t) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.sm,
-        AppSpacing.lg,
-        0,
-      ),
+          AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0),
       child: GlassCard(
         radius: AppRadius.lg,
         child: Padding(
@@ -1120,18 +1349,17 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                 child: SegmentedButton<String>(
                   segments: const [
                     ButtonSegment(
-                      value: 'ch',
-                      label: Text('By Channel'),
-                      icon: Icon(Icons.tv_rounded, size: 18),
-                    ),
+                        value: 'ch',
+                        label: Text('By Channel'),
+                        icon: Icon(Icons.tv_rounded, size: 18)),
                     ButtonSegment(
-                      value: 'ht',
-                      label: Text('By Host'),
-                      icon: Icon(Icons.dns_rounded, size: 18),
-                    ),
+                        value: 'ht',
+                        label: Text('By Host'),
+                        icon: Icon(Icons.dns_rounded, size: 18)),
                   ],
                   selected: {_mode},
-                  onSelectionChanged: (s) => setState(() => _mode = s.first),
+                  onSelectionChanged: (s) =>
+                      setState(() => _mode = s.first),
                   showSelectedIcon: false,
                 ),
               ),
@@ -1139,14 +1367,16 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
               if (_mode == 'ch') _buildChannelForm(t) else _buildHostForm(t),
               const SizedBox(height: AppSpacing.md),
               Text('Player format',
-                  style: t.labelSmall?.copyWith(color: AppColors.textMuted)),
+                  style:
+                      t.labelSmall?.copyWith(color: AppColors.textMuted)),
               const SizedBox(height: AppSpacing.xs),
               DropdownButtonFormField<String>(
                 value: _player,
                 isExpanded: true,
                 items: const [
                   DropdownMenuItem(
-                      value: 'tivimate', child: Text('TiviMate / OTT')),
+                      value: 'tivimate',
+                      child: Text('TiviMate / OTT')),
                   DropdownMenuItem(value: 'kodi', child: Text('Kodi')),
                   DropdownMenuItem(value: 'vlc', child: Text('VLC')),
                 ],
@@ -1210,14 +1440,17 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
           tilePadding: EdgeInsets.zero,
           title: Text('Extra sources', style: t.titleMedium),
           children: [
-            Text('Playlist / gist / pastebin URL, অথবা gist:username',
-                style: t.labelSmall?.copyWith(color: AppColors.textMuted)),
+            Text(
+                'Playlist / gist / pastebin URL, অথবা gist:username',
+                style: t.labelSmall
+                    ?.copyWith(color: AppColors.textMuted)),
             const SizedBox(height: AppSpacing.xs),
             TextField(
               controller: _extraC,
               maxLines: 2,
               decoration: const InputDecoration(
-                hintText: 'https://example.com/playlist.m3u\ngist:username',
+                hintText:
+                    'https://example.com/playlist.m3u\ngist:username',
               ),
             ),
             const SizedBox(height: AppSpacing.xs),
@@ -1256,7 +1489,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Host / URL · host, host:port অথবা পূর্ণ Xtream URL',
+        Text(
+            'Host / URL · host, host:port অথবা পূর্ণ Xtream URL',
             style: t.labelSmall?.copyWith(color: AppColors.textMuted)),
         const SizedBox(height: AppSpacing.xs),
         TextField(
@@ -1270,8 +1504,9 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-            'যেকোনো কাজ করা Xtream স্ট্রিম URL পেস্ট করলেই credential বের করে সব চ্যানেল এনুমারেট হবে।',
-            style: t.labelSmall?.copyWith(color: AppColors.textMuted)),
+          'যেকোনো কাজ করা Xtream স্ট্রিম URL পেস্ট করলেই credential বের করে সব চ্যানেল এনুমারেট হবে।',
+          style: t.labelSmall?.copyWith(color: AppColors.textMuted),
+        ),
         const SizedBox(height: AppSpacing.sm),
         Row(
           children: [
@@ -1311,8 +1546,9 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
   }
 
   Widget _buildProgressPanel(TextTheme t) {
-    final pct =
-        _progB > 0 ? (_progA / _progB * 100).clamp(0, 100).round() : 0;
+    final pct = _progB > 0
+        ? (_progA / _progB * 100).clamp(0, 100).round()
+        : 0;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
           AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
@@ -1341,7 +1577,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                   Expanded(
                     child: Text(
                       '$_stage${_progB > 0 ? ' · $_progA/$_progB' : ''}${_foundCount > 0 ? ' · found $_foundCount' : ''}',
-                      style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                      style: t.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w500),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -1358,7 +1595,9 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
-                  value: _progB > 0 ? _progA / _progB : (_busy ? null : 0.0),
+                  value: _progB > 0
+                      ? _progA / _progB
+                      : (_busy ? null : 0.0),
                   minHeight: 6,
                   backgroundColor: AppColors.fieldFill,
                 ),
@@ -1367,8 +1606,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                 ExpansionTile(
                   tilePadding: EdgeInsets.zero,
                   title: Text('Log দেখুন',
-                      style:
-                          t.labelSmall?.copyWith(color: AppColors.textMuted)),
+                      style: t.labelSmall
+                          ?.copyWith(color: AppColors.textMuted)),
                   children: [
                     Container(
                       width: double.infinity,
@@ -1376,7 +1615,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                       decoration: BoxDecoration(
                         color: AppColors.navBg,
                         borderRadius: BorderRadius.circular(AppRadius.sm),
-                        border: Border.all(color: AppColors.glassBorder),
+                        border:
+                            Border.all(color: AppColors.glassBorder),
                       ),
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxHeight: 160),
@@ -1404,6 +1644,7 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
   Widget _buildToolsPanel(TextTheme t) {
     final channelOpts = _channelOptions;
     final hostOpts = _hostStats;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
           AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
@@ -1421,16 +1662,19 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value:
-                              _filterChannel.isEmpty ? null : _filterChannel,
+                          value: _filterChannel.isEmpty
+                              ? null
+                              : _filterChannel,
                           isExpanded: true,
-                          decoration: const InputDecoration(isDense: true),
+                          decoration:
+                              const InputDecoration(isDense: true),
                           hint: const Text('All channels'),
                           items: channelOpts
                               .map((c) => DropdownMenuItem(
                                   value: c,
                                   child: Text(c,
-                                      overflow: TextOverflow.ellipsis)))
+                                      overflow:
+                                          TextOverflow.ellipsis)))
                               .toList(),
                           onChanged: (v) =>
                               setState(() => _filterChannel = v ?? ''),
@@ -1439,16 +1683,19 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: _filterHost.isEmpty ? null : _filterHost,
+                          value:
+                              _filterHost.isEmpty ? null : _filterHost,
                           isExpanded: true,
-                          decoration: const InputDecoration(isDense: true),
+                          decoration:
+                              const InputDecoration(isDense: true),
                           hint: const Text('All hosts'),
                           items: hostOpts
                               .map((h) => DropdownMenuItem(
                                   value: h.host,
                                   child: Text(
                                       '${h.host} (${h.ok}/${h.total})',
-                                      overflow: TextOverflow.ellipsis)))
+                                      overflow:
+                                          TextOverflow.ellipsis)))
                               .toList(),
                           onChanged: (v) =>
                               setState(() => _filterHost = v ?? ''),
@@ -1469,19 +1716,21 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                       FilterChip(
                         label: const Text('Hide direct'),
                         selected: _hideDirect,
-                        onSelected: (v) => setState(() => _hideDirect = v),
+                        onSelected: (v) =>
+                            setState(() => _hideDirect = v),
                       ),
                       FilterChip(
                         label: const Text('Hide Xtream'),
                         selected: _hideXtream,
-                        onSelected: (v) => setState(() => _hideXtream = v),
+                        onSelected: (v) =>
+                            setState(() => _hideXtream = v),
                       ),
                     ],
                   ),
                   ExpansionTile(
                     tilePadding: EdgeInsets.zero,
-                    title:
-                        Text('Selection, verify ও group', style: t.titleMedium),
+                    title: Text('Selection, verify ও group',
+                        style: t.titleMedium),
                     children: [
                       Wrap(
                         spacing: AppSpacing.sm,
@@ -1504,11 +1753,13 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                             child: const Text('Select verified'),
                           ),
                           OutlinedButton(
-                            onPressed: () => setState(_selected.clear),
+                            onPressed: () =>
+                                setState(_selected.clear),
                             child: const Text('Clear selection'),
                           ),
                           OutlinedButton(
-                            onPressed: _busy ? null : _verifyUnverified,
+                            onPressed:
+                                _busy ? null : _verifyUnverified,
                             style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.error),
                             child: const Text('Verify unverified'),
@@ -1531,10 +1782,13 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                             ?.copyWith(color: AppColors.textMuted)),
                     const SizedBox(height: AppSpacing.xs),
                     ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 220),
+                      constraints:
+                          const BoxConstraints(maxHeight: 220),
                       child: ListView.builder(
                         shrinkWrap: true,
-                        itemCount: hostOpts.length > 50 ? 50 : hostOpts.length,
+                        itemCount: hostOpts.length > 50
+                            ? 50
+                            : hostOpts.length,
                         itemBuilder: (_, i) {
                           final hst = hostOpts[i];
                           return ListTile(
@@ -1542,16 +1796,22 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                             dense: true,
                             title: Text(hst.host,
                                 style: const TextStyle(
-                                    fontFamily: 'monospace', fontSize: 12)),
+                                    fontFamily: 'monospace',
+                                    fontSize: 12)),
                             trailing: Wrap(
                               spacing: 6,
                               children: [
                                 Chip(
-                                    label: Text('${hst.ok}/${hst.total}'),
-                                    visualDensity: VisualDensity.compact),
+                                  label: Text(
+                                      '${hst.ok}/${hst.total}'),
+                                  visualDensity:
+                                      VisualDensity.compact,
+                                ),
                                 TextButton(
-                                    onPressed: () => _exploreHost(hst.host),
-                                    child: const Text('Explore')),
+                                  onPressed: () =>
+                                      _exploreHost(hst.host),
+                                  child: const Text('Explore'),
+                                ),
                               ],
                             ),
                           );
@@ -1573,7 +1833,6 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
     final visible = _visibleResults;
     final shown = visible.take(_showLimit).toList();
     final hasMore = visible.length > _showLimit;
-
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       sliver: SliverList.separated(
@@ -1645,7 +1904,9 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                       _badge(
                         r.ok == true
                             ? '✓ verified'
-                            : (r.ok == false ? '✕ failed' : '• unchecked'),
+                            : (r.ok == false
+                                ? '✕ failed'
+                                : '• unchecked'),
                         color: color,
                       ),
                       if (r.h > 0) _badge('${r.h}p'),
@@ -1664,7 +1925,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(r.src,
-                      style: t.labelSmall?.copyWith(color: AppColors.textMuted),
+                      style: t.labelSmall
+                          ?.copyWith(color: AppColors.textMuted),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: AppSpacing.xs),
@@ -1673,7 +1935,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                     padding: const EdgeInsets.all(AppSpacing.sm),
                     decoration: BoxDecoration(
                       color: AppColors.navBg,
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      borderRadius:
+                          BorderRadius.circular(AppRadius.sm),
                       border: Border.all(color: AppColors.glassBorder),
                     ),
                     child: Text(url,
@@ -1688,20 +1951,25 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                     children: [
                       TextButton.icon(
                         onPressed: () => _copy(url, 'link'),
-                        icon: const Icon(Icons.copy_rounded, size: 16),
+                        icon:
+                            const Icon(Icons.copy_rounded, size: 16),
                         label: const Text('Copy'),
                       ),
                       if (sourceUrl != null)
                         TextButton.icon(
                           onPressed: () => _openSourceUrl(r),
-                          onLongPress: () => _copy(sourceUrl, 'source URL'),
-                          icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                          onLongPress: () =>
+                              _copy(sourceUrl, 'source URL'),
+                          icon: const Icon(
+                              Icons.open_in_new_rounded,
+                              size: 16),
                           label: const Text('Source URL'),
                         ),
                       if (r.host.isNotEmpty)
                         TextButton.icon(
                           onPressed: () => _exploreHost(r.host),
-                          icon: const Icon(Icons.explore_outlined, size: 16),
+                          icon: const Icon(Icons.explore_outlined,
+                              size: 16),
                           label: const Text('Explore host'),
                         ),
                     ],
@@ -1723,8 +1991,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
           color: c.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(999)),
       child: Text(text,
-          style:
-              TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w600)),
+          style: TextStyle(
+              fontSize: 11, color: c, fontWeight: FontWeight.w600)),
     );
   }
 
@@ -1745,12 +2013,14 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('$count links',
-                    style: t.bodySmall?.copyWith(color: AppColors.textMuted)),
+                    style: t.bodySmall
+                        ?.copyWith(color: AppColors.textMuted)),
                 Text(
                     _selected.isNotEmpty
                         ? '${_selected.length} selected'
                         : 'all shown',
-                    style: t.bodySmall?.copyWith(color: AppColors.textMuted)),
+                    style: t.bodySmall
+                        ?.copyWith(color: AppColors.textMuted)),
               ],
             ),
             const SizedBox(height: AppSpacing.xs),
@@ -1762,7 +2032,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                     onPressed: () {
                       final items = _pickItems;
                       if (items.isEmpty) return;
-                      _copy(buildM3U(items, _player, _groupC.text.trim()),
+                      _copy(
+                          buildM3U(items, _player, _groupC.text.trim()),
                           '${items.length} channels (M3U)');
                     },
                     child: const Text('Copy M3U'),
@@ -1774,7 +2045,10 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                     onPressed: () {
                       final items = _pickItems;
                       if (items.isEmpty) return;
-                      _copy(items.map((r) => finalUrl(r, _player)).join('\n'),
+                      _copy(
+                          items
+                              .map((r) => finalUrl(r, _player))
+                              .join('\n'),
                           '${items.length} URLs');
                     },
                     child: const Text('URLs'),
@@ -1796,7 +2070,8 @@ class _IptvFinderPageState extends State<IptvFinderPage> {
                                 'note': r.note,
                               })
                           .toList();
-                      _copy(const JsonEncoder.withIndent('  ').convert(list),
+                      _copy(
+                          const JsonEncoder.withIndent(' ').convert(list),
                           '${items.length} items (JSON)');
                     },
                     child: const Text('JSON'),
